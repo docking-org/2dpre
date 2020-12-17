@@ -1,0 +1,5 @@
+#!/bin/bash
+
+rm -r H00P000_H00P000/src
+python3 2dload.py add 0 test_x.pre x
+python3 2dload.py add 0 test_x1.pre x

@@ -15,8 +15,8 @@ pushd $BINPATH
 BINPATH=$PWD
 popd
 cd /dev/shm/2dpre/${JOB_ID}_${TASK_ID}
-
 TARGET=$(ls $SOURCE | awk -v x="$SOURCE/" '{print x $1 " " NR}' | grep -w $TASK_ID | awk '{print $1}')
+echo "$(hostname)  ${JOB_ID}_${TASK_ID} $TARGET" > info
 ln -s $TARGET $(basename $TARGET)
 
 $BINPATH/zincload-catalog.sh --skip-resolution --skip-creation --skip-loading --skip-depletion --name working $(basename $TARGET)
