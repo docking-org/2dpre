@@ -1,10 +1,12 @@
 #!/bin/bash
-# in: INPUT_FILE, OUTPUT_DEST, BINPATH
+# in: INPUT_FILE, OUTPUT_DEST, BINPATH, CATALOG
 
-STAGE_DIR=/nfs/scratch/A/xyz/2dpre_staging/$(basename $INPUT_FILE)
+STAGE_DIR=/nfs/exb/zinc22/2dpre_staging/$CATALOG/$(basename $INPUT_FILE)
+
 mkdir -p $STAGE_DIR
 mkdir -p $STAGE_DIR/in
 mkdir -p $STAGE_DIR/out
+mkdir -p $STAGE_DIR/log
 
 length=$(cat $INPUT_FILE | wc -l)
 echo "length of input file: $length"
@@ -17,7 +19,7 @@ if [ $(ls $STAGE_DIR/in | wc -l) -gt 0 ]; then
 	echo "found and removed existing files from stage dir in"
 fi
 if [ $(ls $STAGE_DIR/out | wc -l) -gt 0 ]; then
-	rm $STAGE_DIR/out/*
+	rm  $STAGE_DIR/out/*
 	echo "found and removed existing files from stage dir out"
 fi
 
@@ -29,8 +31,7 @@ export SOURCE=$STAGE_DIR/in
 export DEST=$STAGE_DIR/out
 export BINPATH
 echo "submitting $ntasks preprocessing jobs..."
-jobid=$(sbatch -o /dev/null -e /dev/null -J 2dpre --wait --cpus-per-task=1 --parsable --array=1-$ntasks --priority="TOP" $BINPATH/pre_process.bash)
-
+jobid=$(sbatch -o "$STAGE_DIR/log/%a.out" -e "$STAGE_DIR/log/%a.err" -J 2dpre --wait --cpus-per-task=1 --parsable --array=1-$ntasks --priority="TOP" $BINPATH/pre_process.bash)
 cat $DEST/* > $OUTPUT_DEST
 echo "done! length of output file: $(cat $OUTPUT_DEST | wc -l)"
 

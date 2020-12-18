@@ -6,6 +6,7 @@ from datetime import datetime
 import subprocess
 import shutil
 import re
+from export_zinc_ids import export_to_file
 
 LOAD_BASE_DIR = os.environ.get("LOAD_BASE_DIR") or '/local2/load'
 BINPATH = os.path.dirname(__file__) or '.'
@@ -337,3 +338,46 @@ if sys.argv[1] == "rollback":
         int_to_file(new_length_substance, source_dir + '/.len_substance')
         int_to_file(new_length_supplier,  source_dir + '/.len_supplier')
         int_to_file(new_length_catalog,   source_dir + '/.len_catalog')
+
+if sys.argv[1] == "export":
+
+    partition_no = int(sys.argv[2])
+    partition_label = get_partition_label(partition_no)
+    shortnames = [] # by default this command will export all SMILES in the database
+    source_dir = LOAD_BASE_DIR + '/' + partition_label + '/src'
+
+    # alternatively, you can select catalog(s) to export
+    if len(sys.argv) > 3:
+        shortnames = list(map(str, sys.argv[3].split(',')))
+
+    istranche = lambda t: len(t) == 7 and t[0] == 'H' and (t[3] == 'P' or t[3] == 'M')
+    sources = sorted(list(filter(istranche, os.listdir(source_dir))))
+    #export_file = open(partition_label + '.' + '.'.join(shortnames + ['smi']), 'w')
+
+    for source in sources:
+
+        srcdir = source_dir + '/' + source
+        archives = list(filter(lambda x:x.endswith("tar.gz"), os.listdir(srcdir)))
+        export_archives = []
+
+        for archive in archives:
+            catalog_short = archive_shortname(archive)
+            if not shortnames or catalog_short in shortnames:
+                export_archives.append(archive)
+
+        export_file = open(source + '.' + '.'.join(shortnames + ['smi']), 'w')
+
+        for export in export_archives:
+
+            archive_path    = srcdir   + '/' + export
+            untarred_path   = srcdir   + '/' + '.'.join(export.split('.')[:-2])
+            substance_path  = untarred_path + '/sub'
+            strip_components = det_leading_components(archive_path, os.path.basename(untarred_path))
+            tar_args = "-xzf" if is_gz_file(archive_path) else "-xf"
+            subprocess.call(["tar", "--strip-components={}".format(strip_components), "-C", srcdir, tar_args, archive_path])
+            subprocess.call(["gzip", "-d", substance_path + '.gz'])
+
+            export_to_file(substance_path, export_file, source, BINPATH)
+            shutil.rmtree(untarred_path)
+
+        export_file.close()
