@@ -1,4 +1,6 @@
 #!/bin/bash
+# some legacy archives have improperly formatted supplier data missing a column of (currently unused) data
+# this script automatically detects and fixes this issue wherever it pops up
 
 BINDIR=$(dirname $0)
 BINDIR=${BINDIR-.}
