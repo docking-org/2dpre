@@ -37,6 +37,13 @@ out = []
 sx, sy = start
 ex, ey = end
 
+
+if tranche_dir == "NONE":
+    for x in range(sx, ex+1):
+        for y in range(sy, ey+1):
+            print(rangemap.getinv(x, y))
+    sys.exit(0)
+
 for x in range(sx, ex+1):
     for y in range(sy, ey+1):
         hlogp = rangemap.getinv(x, y)

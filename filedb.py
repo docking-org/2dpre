@@ -81,6 +81,9 @@ def main(args):
 
     old_fn = args.old
     new_fn = args.new
+    # warm up the destination in case of empty input file
+    with open(args.dest, 'a'):
+        pass
 
     new_entries_fn = hidden_name(old_fn) + '.new'
     new_entries_f = open(new_entries_fn, 'w+')
@@ -100,7 +103,9 @@ def main(args):
         # default to using all columns (apart from PK) as a sorting key if none are specified
         column_args = '1-' + str(new_fields) if not args.columns else args.columns
         all_columns = get_explicit_columns(column_args)
-
+        if new_fields == 0:
+            sys.stderr.write("0 new entries found\n")
+            return
         assert((new_fields == (old_fields - 1)) or old_fields == 0)
         if old_fields == 0: # in the case of an empty database we set it's no. fields manually
             old_fields = new_fields + 1

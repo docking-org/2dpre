@@ -3,9 +3,11 @@ from __future__ import print_function
 import sys
 import os
 from datetime import datetime
+from datetime import date
 import subprocess
 import shutil
 import re
+import gzip
 from export_zinc_ids import export_to_file
 
 LOAD_BASE_DIR = os.environ.get("LOAD_BASE_DIR") or '/local2/load'
@@ -93,8 +95,10 @@ def linecount(filename):
     return n
 
 def clear_files(directory):
-    for f in list(filter(lambda x:os.path.isfile(x), os.listdir(directory))):
-        os.remove(f)
+    for f in list(filter(lambda x:os.path.isfile(directory + '/' + x), os.listdir(directory))):
+        os.remove(directory + '/' + f)
+    for d in list(filter(lambda x:os.path.isdir(directory + '/' + x), os.listdir(directory))):
+        shutil.rmtree(directory + '/' + d)
 
 def is_gz_file(filepath):
     with open(filepath, 'rb') as test_f:
@@ -143,8 +147,22 @@ if sys.argv[1] == "add":
     subprocess.call(["mkdir", "-p", source_dir])
     subprocess.call(["mkdir", "-p", stage_dir ])
     subprocess.call(["mkdir", "-p", temp_dir  ])
+    clear_files(temp_dir)
     subprocess.call(["tar", "-C", temp_dir, "-xf", prefilename])
 
+    input_tranches = sorted(os.listdir(temp_dir))
+    istranche = lambda t: len(t) == 7 and t[0] == 'H' and (t[3] == 'P' or t[3] == 'M')
+    all_tranches = sorted(list(filter(istranche, os.listdir(source_dir))))
+    if len(input_tranches) < len(all_tranches):
+        log("input .pre file missing {} tranches!".format(len(all_tranches)-len(input_tranches)))
+        missing = []
+        for tranche in all_tranches:
+            if not tranche in input_tranches:
+                missing.append(tranche)
+        log("missing=" + ','.join(missing))
+        sys.exit(1)
+
+    clear_files(stage_dir)
     for i, tranche in enumerate(sorted(os.listdir(temp_dir))):
         log("working on", tranche, catalog_short)
         
@@ -165,7 +183,7 @@ if sys.argv[1] == "add":
         log("adding new substance data...")
         length_new_substance = filedb_add(srcpath + '/substance.txt', fullpath + '.sub', length_org_substance, resolve=True, dest=new_entries_sub_fn, columns=[1])
         log("adding new supplier data...")
-        length_new_supplier  = filedb_add(srcpath + '/supplier.txt',  fullpath + '.sup', length_org_supplier,  resolve=True, dest=new_entries_sup_fn, idcolumn=2, columns=[1, 3])
+        length_new_supplier  = filedb_add(srcpath + '/supplier.txt',  fullpath + '.sup', length_org_supplier,  resolve=True, dest=new_entries_sup_fn, idcolumn=2, columns=[1])
 
         catalog_new_file = open(fullpath + '.cat', 'w')
         with subprocess.Popen(["paste", "-d", " ", fullpath + '.sub.r', fullpath + '.sup.r'], stdout=subprocess.PIPE) as paste_proc:
@@ -181,8 +199,8 @@ if sys.argv[1] == "add":
         int_to_file(length_new_catalog+length_org_catalog,     source_dir + '/.len_catalog')
 
         if length_new_catalog == 0:
-            log("no new entries detected, no archive will be created")
-            continue
+            log("no new entries detected, empty archive will be created")
+            #continue
 
         append_file_names(new_entries_sub_fn, srcpath + '/substance.txt')
         append_file_names(new_entries_sup_fn, srcpath + '/supplier.txt')
@@ -213,9 +231,9 @@ if sys.argv[1] == "add":
 
         log("success! results archived to {}".format(srcpath + '/' + archivename + '.tar.gz'))
 
-        shutil.rmtree(archivetmpdir)
+        #shutil.rmtree(archivetmpdir)
         clear_files(stage_dir)
-        clear_files(temp_dir)
+    clear_files(temp_dir)
 
 # option 2: roll back to a previous version, or view the existing versions
 if sys.argv[1] == "rollback":
@@ -232,7 +250,8 @@ if sys.argv[1] == "rollback":
 
         source_dir = LOAD_BASE_DIR + '/' + partition_label + '/src'
 
-        sources = sorted(list(filter(lambda x:not x.startswith('.'), os.listdir(source_dir))))
+        istranche = lambda t: len(t) == 7 and t[0] == 'H' and (t[3] == 'P' or t[3] == 'M')
+        sources = sorted(list(filter(istranche, os.listdir(source_dir))))
 
         for source in sources:
             archives = list(filter(lambda x:x.endswith("tar.gz"), os.listdir(source_dir + '/' + source)))
@@ -265,6 +284,11 @@ if sys.argv[1] == "rollback":
 
         shortname_list = sys.argv[3].split(',')
         source_dir = LOAD_BASE_DIR + '/' + partition_label + '/src'
+
+        # use a less restrictive lambda here so we can implement a dirty hack
+        # basically, in order to keep legacy compatibility, we need to be able to have len_substance be greater than the actual length
+        # to accomplish this we need to have a "dummy" tranche with some dummy entries that count towards the total length, but aren't included in the database proper
+        # since len_substance is calculated from scratch on rollback, we need to have the rollback function recognize this dummy tranche, but only the rollback function
         sources = sorted(list(filter(lambda x:not x.startswith('.'), os.listdir(source_dir))))
 
         new_length_substance = 0
@@ -275,9 +299,12 @@ if sys.argv[1] == "rollback":
 
             source_path = source_dir + '/' + source
             log("working on " + source_path)
-            os.remove(source_path + '/substance.txt')
-            os.remove(source_path + '/catalog.txt')
-            os.remove(source_path + '/supplier.txt')
+            try:
+                os.remove(source_path + '/substance.txt')
+                os.remove(source_path + '/catalog.txt')
+                os.remove(source_path + '/supplier.txt')
+            except:
+                pass
 
             substance_file  = open(source_path + '/substance.txt',  'w')
             catalog_file    = open(source_path + '/catalog.txt',    'w')
@@ -352,11 +379,15 @@ if sys.argv[1] == "export":
     # alternatively, you can select catalog(s) to export
     if len(sys.argv) > 3:
         shortnames = list(map(str, sys.argv[3].split(',')))
+    selected = os.getenv("EXPORT_TRANCHE")
 
     istranche = lambda t: len(t) == 7 and t[0] == 'H' and (t[3] == 'P' or t[3] == 'M')
     sources = sorted(list(filter(istranche, os.listdir(source_dir))))
 
     for source in sources:
+        if selected and not (source == selected):
+            continue
+        log(source)
 
         srcdir = source_dir + '/' + source
         archives = list(filter(lambda x:x.endswith("tar.gz"), os.listdir(srcdir)))
@@ -376,7 +407,8 @@ if sys.argv[1] == "export":
             substance_path  = untarred_path + '/sub'
             strip_components = det_leading_components(archive_path, os.path.basename(untarred_path))
             tar_args = "-xzf" if is_gz_file(archive_path) else "-xf"
-            subprocess.call(["tar", "--strip-components={}".format(strip_components), "-C", srcdir, tar_args, archive_path, untarred_archive + '/sub.gz'])
+            if os.path.isdir(untarred_path): shutil.rmtree(untarred_path)
+            subprocess.call(["tar", "--strip-components={}".format(strip_components), "-C", srcdir, tar_args, archive_path, '.'.join(export.split('.')[:-2]) + '/sub.gz'])
             subprocess.call(["gzip", "-d", substance_path + '.gz'])
 
             export_to_file(substance_path, export_file, source, BINPATH)
@@ -387,77 +419,139 @@ if sys.argv[1] == "export":
 # option 4- query, wipe, or upload data to the postgres DBMS
 if sys.argv[1] == "postgres":
 
+    def bind_port(port_no, partition_dir):
+        with open(partition_dir + '/.port') as portfile:
+            portfile.write("{}".format(port_no))
+
     partition_no = int(sys.argv[2])
     partition_label = get_partition_label(partition_no)
     upload_type = sys.argv[3]
-    postgres_port = int(sys.argv[4])
+    if len(sys.argv) > 4:
+        postgres_port = int(sys.argv[4])
+    else:
+        postgres_port = int_from_file(LOAD_BASE_DIR + '/' + partition_label + '/.port')
     source_dir = LOAD_BASE_DIR + '/' + partition_label + '/src'
+    psql = ["psql", "-d", "tin", "-U", "tinuser"]
 
-    def query_present(source, port):
+    def query_present(source, port, verbose=False):
         results = []
-        sources = sorted(list(filter(lambda x:not x.startswith('.'), os.listdir(source))))
+        istranche = lambda t: len(t) == 7 and t[0] == 'H' and (t[3] == 'P' or t[3] == 'M')
+        sources = sorted(list(filter(istranche, os.listdir(source))))
 
         for src in sources:
             fullpath = source + '/' + src
             archives = list(filter(lambda x:x.endswith("tar.gz"), os.listdir(fullpath)))
 
             for archive in archives:
-                archive_path    = srcdir   + '/' + archive
-                untarred_path   = srcdir   + '/' + '.'.join(archive.split('.')[:-2])
+                archive_path    = fullpath   + '/' + archive
+                untarred_path   = fullpath   + '/' + '.'.join(archive.split('.')[:-2])
                 substance_path  = untarred_path + '/sub'
+                supplier_path   = untarred_path + '/sup'
+                catalog_path    = untarred_path + '/cat'
                 strip_components = det_leading_components(archive_path, os.path.basename(untarred_path))
                 tar_args = "-xzf" if is_gz_file(archive_path) else "-xf"
-                subprocess.call(["tar", "--strip-components={}".format(strip_components), "-C", srcdir, tar_args, archive_path, untarred_path + '/sub.gz'])
+                subprocess.call(["tar", "--strip-components={}".format(strip_components), "-C", fullpath, tar_args, archive_path])
 
-                with gzip.open(substance_path + '.gz') as subfile:
-                    head = subfile.readline()
-                    smiles, rubbish, pkey = head.split()
+                def query_present(pkey_column, pkey_name, table_name, testpath):
+                    with gzip.open(testpath) as testfile:
+                        head = testfile.readline()
+                        if not head:
+                            return -1
+                        tokens = head.split()
+                        pkey = tokens[pkey_column-1]
+                        with subprocess.Popen(
+                            psql + ["-p", str(port), "--csv", "-c", "select {} from {} where ( {} = {} ) limit 1".format(pkey_name, table_name, pkey_name, int(pkey))], stdout=subprocess.PIPE) as psql_query:
+                            skip = psql_query.stdout.readline()
+                            present = psql_query.stdout.readline()
+                            if present:
+                                return 0
+                            return 1
+                if verbose: print("working on: " + archive, end='\r')
 
-                    # run a select query on the first entry in the substance file to see if this data's been uploaded already
-                    with subprocess.Popen(
-                        ["psql", "-p", port, "--csv", "-c", "select sub_id from substance where ( sub_id = '{}' ) limit 1".format(pkey)], stdout=subprocess.PIPE
-                        ) as psql_query:
-                        skip = psql_query.stdout.readline()
-                        present = psql_query.stdout.readline()
-                        results.append(archive_path, True if present else False)
-
+                subtest = query_present(3, "sub_id", "substance", substance_path + '.gz')
+                suptest = query_present(2, "cat_content_id", "catalog_content", supplier_path + '.gz')
+                cattest = query_present(3, "cat_sub_itm_id", "catalog_substance", catalog_path + '.gz')
+                
+                if suptest == 1 or subtest == 1 or cattest == 1:
+                    if suptest == 0 or subtest == 0 or cattest == 0:
+                        log("some tables were present in {} while others weren't: sup:{} sub:{} cat:{}".format(archive_path, suptest, subtest, cattest))
+                        sys.exit(1)
+                    results.append((archive_path, False))
+                else:
+                    if suptest == -1 and subtest == -1 and cattest == -1:
+                        log("{} looks empty! Will skip during upload".format(archive_path))
+                    results.append((archive_path, True))
+                
                 shutil.rmtree(untarred_path)
+        if verbose: print()
+        return results
 
     def wipe_postgres(port):
 
-        subprocess.call("psql", "-p", port, "-f", BINPATH + '/psql/wipe.psql')
+        subprocess.call(psql + ["-p", str(port), "-f", BINPATH + '/psql/tin_wipe.psql'])
 
     def upload_archives(archives, port):
 
-        subprocess.call("psql", "-p", port, "-f", BINPATH + '/psql/setup_copy.psql')
+        if len(archives) == 0:
+            return
+
+        subprocess.call(psql + ["-p", str(port), "-f", BINPATH + '/psql/tin_setup_copy.psql'])
         for upload in archives:
 
+            source_path     = os.path.dirname(upload)
             untarred_path   = '.'.join(upload.split('.')[:-2])
             substance_path  = untarred_path + '/sub'
             catalog_path    = untarred_path + '/cat'
             supplier_path   = untarred_path + '/sup'
+            shortname       = os.path.basename(untarred_path).split('_')[1]
 
-            strip_components = det_leading_components(archive_path, os.path.basename(untarred_path))
+            if os.path.isdir(untarred_path):
+                shutil.rmtree(untarred_path)
+            strip_components = det_leading_components(upload, os.path.basename(untarred_path))
             tar_args = "-xzf" if is_gz_file(upload) else "-xf"
             subprocess.call(["tar", "--strip-components={}".format(strip_components), "-C", source_path, tar_args, upload])
             subprocess.call(["gzip", "-d", substance_path + '.gz'])
             subprocess.call(["gzip", "-d", catalog_path   + '.gz'])
             subprocess.call(["gzip", "-d", supplier_path  + '.gz'])
+            # trim any trailing whitespace, it will mess with postgres
+            subprocess.call(["sed", "-i", "s/\s*$//g", substance_path])
+            subprocess.call(["sed", "-i", "s/\s*$//g", supplier_path])
+            subprocess.call(["sed", "-i", "s/\s*$//g", catalog_path])
+
+            # our default supplier.txt doesn't have catalog mapping information that postgres wants
+            # sooo instead of retrofitting everything we will just fix at upload time
+            catid = None
+            with subprocess.Popen(psql + ["-p", str(port), "--csv", "-c", "select (cat_id) from catalog where ( name = '{}' )".format(shortname)], stdout=subprocess.PIPE) as catquery:
+                header = catquery.stdout.readline()
+                catid = catquery.stdout.readline()
+                if not catid:
+                    todaysdate = date.today().strftime("%B %d, %Y")
+                    with subprocess.Popen(psql + ["-p", str(port), "--csv", "-c", "insert into catalog (name, short_name, updated) values ('{}', '{}', '{}') returning cat_id".format(shortname, shortname, todaysdate)], stdout=subprocess.PIPE) as insertcat:
+                        header = insertcat.stdout.readline()
+                        catid = insertcat.stdout.readline()
+            catid = str(int(catid))
+            supplier_catid_f = open(supplier_path + '.psql', 'w')
+            subprocess.call(["awk", "-v", "catid={}".format(catid), "{print $1 \" \" $2 \" \" catid}", supplier_path], stdout=supplier_catid_f)
+            supplier_catid_f.close()
+
+            log("catid={}".format(catid))
 
             log("beginning postgres upload of {} to port {}".format(upload, port))
-            subprocess.call("psql", "-p", port, 
-            "--set=subp={}".format(substance_path), "--set=supp={}".format(supplier_path), "--set=catp-{}".format(catalog_path), 
-            "-f", BINPATH + '/psql/copy.psql')
+            subprocess.call(psql + ["-p", str(port), 
+            "--set=subp={}".format(substance_path), "--set=supp={}".format(supplier_path + '.psql'), "--set=catp={}".format(catalog_path), 
+            "-f", BINPATH + '/psql/tin_copy.psql'])
 
-        subprocess.call("psql", "-p", port, "-f", BINPATH + '/psql/cleanup_copy.psql')
+            shutil.rmtree(untarred_path)
+
+        subprocess.call(psql + ["-p", str(port), "-f", BINPATH + '/psql/tin_cleanup_copy.psql'])
 
     # upload strategy 0: query postgres to see which data is present, don't upload any data
     if upload_type == "query":
-        present_query = query_present(source_dir, postgres_port)
+        present_query = query_present(source_dir, postgres_port, verbose=True)
         print(fixed_width("archive name", 64) + ' | ' + fixed_width("present", 8) + ' |')
         for result in present_query:
             archive, present = result
-            print(fixed_width(archive, 64) + ' | ' + fixed_width(str(result), 8) + ' |')
+            print(fixed_width(archive, 64) + ' | ' + fixed_width(str(present), 8) + ' |')
 
     # upload strategy 1: wipe the existing database
     if upload_type == "clear":
@@ -468,7 +562,9 @@ if sys.argv[1] == "postgres":
         present_query = query_present(source_dir, postgres_port)
         to_upload = [x[0] for x in filter(lambda x:not x[1], present_query)]
 
+        log("uploading {} archives".format(len(to_upload)))
         upload_archives(to_upload, postgres_port)
+
 
     # upload strategy 3: remove any data present on postgres, upload everything in full
     if upload_type == "upload_full":
@@ -478,4 +574,5 @@ if sys.argv[1] == "postgres":
 
         upload_archives(all_archives, postgres_port)
 
-    
+    if upload_type == "bind":
+        int_to_file(postgres_port, LOAD_BASE_DIR + '/' + partition_label + '/.port')
