@@ -12,6 +12,7 @@ parser.add_argument('--resolve', dest='resolve', action='store_true', help='prin
 parser.add_argument('--dest', dest='dest', type=str, help="file to append new entries to. By default this is the existing database file")
 parser.add_argument('--length', type=int, dest='length', default=None, help='size of the existing database, by default the size of the existing database file. Use if striping a table over multiple files.')
 parser.add_argument('--id-column', dest='idcolumn', type=int, default=0, help='the column of the primary key in the existing database')
+parser.add_argument('--get-old', dest='get_old', action='store_true', help='write out existing entries to a .old file')
 
 def get_num_lines(filename):
     with open(filename) as f:
@@ -89,6 +90,9 @@ def main(args):
     new_entries_f = open(new_entries_fn, 'w+')
     resolved_entries_fn = hidden_name(old_fn) + '.resolve'
     resolved_entries_f = None if not args.resolve else open(resolved_entries_fn, 'w')
+    if args.get_old:
+        old_entries_fn = old_fn + '.old'
+        old_entries_f = open(old_entries_fn, 'w')
 
     try:
 
@@ -125,7 +129,7 @@ def main(args):
 
                 for line in proc_sorted.stdout:
 
-                    tokens = line.decode('utf-8').rstrip().split()
+                    tokens = line.decode('utf-8').rstrip().split(" ")
                     idcolumn = old_fields if not args.idcolumn else args.idcolumn
                     column, idno = (' '.join([tokens[c-1] for c in all_columns]), int(tokens[idcolumn-1]))
                     column_left = ' '.join(tokens[:idcolumn-1])
@@ -154,6 +158,8 @@ def main(args):
                         # the resolved list should have the same size as the input list
                         if args.resolve:
                             resolved_entries_f.write(str(idno) + ' ' + str(idno_prev) + '\n')
+                        if args.get_old:
+                            old_entries_f.write(column_left + ' ' + str(idno) + ' ' + column_right + '\n')
 
         if args.resolve:
             resolved_entries_f.close()
@@ -177,6 +183,8 @@ def main(args):
         if args.resolve:
             resolved_entries_f.close()
             os.remove(resolved_entries_fn)
+        if args.get_old:
+            old_entries_f.close()
         new_entries_f.close()
         os.remove(new_entries_fn)
                     

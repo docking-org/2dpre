@@ -56,6 +56,10 @@ else
 	echo $N_PORTS postgres ports available! Loading now...
 fi
 
+UPLOAD_OPTION=${UPLOAD_OPTION-upload_smart}
+echo UPLOAD_OPTION=$UPLOAD_OPTION
+echo "waiting 5 seconds before submitting upload jobs, ctrl-C to stop"
+
 slurmhost=$(hostname | cut -d'.' -f1)
 logdir=/nfs/exb/zinc22/2dload_logs
 nparts=$(cat /dev/shm/psql_partitions_to_load.txt | wc -l)
@@ -83,6 +87,6 @@ done
 for partition in $(cat /dev/shm/partitions_to_postgres.txt); do
 	partname=$(basename $partition | tr '_' ' ')
 	partid=$(grep -w "$partname" $BINDIR/partitions.txt | awk '{print $3}')
-	jobid=$(sbatch --parsable --priority=TOP -w $slurmhost -o $logdir/psql_$slurmhost/2dpsql_$partid_$port.out -J 2dpsqlx $BINDIR/2dload_slurm.bash postgres $partid upload_smart)
+	jobid=$(sbatch --parsable --priority=TOP -w $slurmhost -o $logdir/psql_$slurmhost/2dpsql_$partid_$port.out -J 2dpsqlx $BINDIR/2dload_slurm.bash postgres $partid $UPLOAD_OPTION)
 	echo "launched upload_smart job for $partid with jobid=$jobid"
 done

@@ -10,7 +10,11 @@ if [ -z $imageid ]; then
 fi
 
 export VERBOSE=
-bash $BINDIR/diagnose_2d.bash $imageid | grep -v "good" | awk '{print $2}' > /dev/shm/partitions_to_fix_$imageid.txt
+if [ -z $REFRESH_IMAGE ]; then
+	bash $BINDIR/diagnose_2d.bash $imageid | grep -v "good" | awk '{print $2}' > /dev/shm/partitions_to_fix_$imageid.txt
+else
+	bash $BINDIR/diagnose_2d.bash $imageid | awk '{print $2}' > /dev/shm/partitions_to_fix_$imageid.txt
+fi
 #bash $BINDIR/diagnose_2d.bash $imageid | grep "good" | awk '{print $2}' > /dev/shm/partitions_to_postgres.txt
 
 if ! [[ $BINDIR == /* ]]; then
@@ -77,6 +81,7 @@ for partid in $(cat /dev/shm/partitions_to_fix_$imageid.txt); do
 done
 
 echo $req_catalog
+echo REFRESH_IMAGE=$REFRESH_IMAGE
 echo "about to start submitting in 5 seconds, ctrl-C to quit"
 sleep 5
 
