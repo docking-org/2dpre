@@ -22,7 +22,7 @@ req_catalog=${req_catalog-,}
 echo $req_catalog
 sleep 1
 
-source /dev/shm/build_3d/lig_build_py3-3.7.1/bin/activate
+source /dev/shm/build_3d_common/lig_build_py3-3.7.1/bin/activate
 python $BINDIR/../2dload.py rollback $partid $req_catalog
 if [ $imageid -eq 1 ]; then
 	bash $BINDIR/import_2d_substance.bash $partid

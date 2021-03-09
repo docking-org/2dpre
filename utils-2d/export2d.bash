@@ -19,7 +19,7 @@ fi
 #EXPORT_LIST=su,mu
 #EXPORT_DEST=/nfs/exb/zinc22/2d-anions
 
-source /dev/shm/build_3d/lig_build_py3-3.7.1/bin/activate
+source /dev/shm/build_3d_common/lig_build_py3-3.7.1/bin/activate
 bash diagnose_2d.bash $imageid | grep good | awk '{print $2}' > /dev/shm/partitions_to_export.bash
 
 mkdir -p /local2/load/export/tmp

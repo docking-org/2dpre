@@ -142,7 +142,7 @@ def main(args):
 
                     # here is the part where we find new entries
                     if not column_prev == column:
-                        # if we find a non-duplicate column that belongs to the input list, we write it out to the new list
+                        # if we find a non-duplicate column that belongs to the input "new" list, we write it out to the new list
                         if idno > len_old:
                             new_entries_f.write(column_left + ' ' + str(len_old + curr_new + 1) + ' ' + column_right + '\n')
                             if args.resolve:
