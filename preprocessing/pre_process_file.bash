@@ -31,7 +31,7 @@ export SOURCE=$STAGE_DIR/in
 export DEST=$STAGE_DIR/out
 export BINPATH
 echo "submitting $ntasks preprocessing jobs..."
-jobid=$(sbatch -o "$STAGE_DIR/log/%a.out" -e "$STAGE_DIR/log/%a.err" -J 2dpre --wait --cpus-per-task=1 --parsable --array=1-$ntasks --priority="TOP" $BINPATH/pre_process.bash)
+jobid=$(sbatch  -o "$STAGE_DIR/log/%a.out" -e "$STAGE_DIR/log/%a.err" -J 2dpre --wait --cpus-per-task=1 --parsable --array=1-$ntasks --priority="TOP" $BINPATH/pre_process.bash)
 cat $DEST/* > $OUTPUT_DEST
 echo "done! length of output file: $(cat $OUTPUT_DEST | wc -l)"
 

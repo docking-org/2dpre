@@ -1,6 +1,30 @@
 #!/bin/bash
 # in: JOB_ID, TASK_ID, SOURCE, DEST, BINPATH
 
+function synchronize_all_but_first {
+        if [ -f /tmp/${1}.done ]; then
+                if [ $(( (`date +%s` - `stat -L --format %Y /tmp/${1}.done`) > (10) )) ]; then
+                        rm /tmp/${1}.done
+                else
+                        return;
+                fi
+        fi # in the case of a particularly short running command, it might be done by the time another job even enters this function
+        flock -n /tmp/${1}.lock -c "printf ${1} && ${@:2} && echo > /tmp/${1}.done" && FIRST=TRUE
+        if [ -z $FIRST ]; then
+                printf "waiting ${1}"
+                n=0
+                while ! [ -f /tmp/${1}.done ]; do sleep 0.1; n=$((n+1)); if [ $n -eq 10 ]; then printf "."; n=0; fi; done
+        else
+                sleep 1 && rm /tmp/${1}.done
+        fi
+        echo
+}
+
+old_work=$(find /dev/shm/2dpre -type d -mtime +180 | wc -l)
+if [ $old_work -ge 1 ]; then
+	synchronize_all_but_first "removing_old_work" "find /dev/shm/2dpre -type d -mtime +180 | xargs rm -r"
+fi
+
 source /nfs/soft/mitools/env.sh
 #source /mnt/nfs/home/devtest/anaconda3/bin/activate 
 export PATH=$PATH:/nfs/soft/www/apps/tin01/envs/development/bin

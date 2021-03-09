@@ -19,7 +19,7 @@ fi
 #EXPORT_LIST=su,mu
 #EXPORT_DEST=/nfs/exb/zinc22/2d-anions
 
-source /dev/shm/build_3d/lig_build_py3-3.7.1/bin/activate
+source /dev/shm/build_3d_common/lig_build_py3-3.7.1/bin/activate
 bash diagnose_2d.bash $imageid | grep good | awk '{print $2}' > /dev/shm/partitions_to_export.bash
 
 mkdir -p /local2/load/export/tmp
@@ -28,7 +28,7 @@ cd /local2/load/export/tmp
 for pid in $(cat /dev/shm/partitions_to_export.bash); do
 	pname=$(grep -w $pid $BINDIR/partitions.txt | awk '{print $1}')
 	hac=$(printf $pname | awk '{print substr($1, 1, 3)}')
-	if [ -f $EXPORT_DEST/$hac/$pname.smi.gz ]; then
+	if [ -z $FORCE ] && [ -f $EXPORT_DEST/$hac/$pname.smi.gz ]; then
 		continue
 	fi
 	echo $pid

@@ -4,3 +4,5 @@
 /mnt/nfs/db5/zinc22/2d/vendors/enamine/2020-10/2020q1-3_REAL_Space_Acids_345M_tranches/M_345M_smiles mu
 /mnt/nfs/db5/zinc22/2d/vendors/mcule/2020-4 mcule
 /nfs/db5/zinc22/2d/vendors/wuxi/2020-11 wuxi
+/nfs/db5/zinc22/2d/vendors/enamine/2021-02/private/S sx
+/nfs/db5/zinc22/2d/vendors/enamine/2021-02/private/M mx
