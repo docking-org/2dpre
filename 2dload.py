@@ -44,6 +44,12 @@ def append_file(source, dest, chunksize=1024*1024):
             dest.write(chunk)
             chunk = source.read(chunksize).decode('utf-8')
 
+def append_file_b(source, dest, chunksize=1024*1024):
+    chunk = source.read(chunksize)
+    while chunk:
+        dest.write(chunk)
+        chunk = source.read(chunksize)
+
 def append_file_names(source, dest, chunksize=1024*1024):
     with open(source, 'r') as srcf:
         with open(dest, 'a') as destf:
@@ -477,9 +483,12 @@ if sys.argv[1] == "postgres":
                         log("some tables were present in {} while others weren't: sup:{} sub:{} cat:{}".format(archive_path, suptest, subtest, cattest))
                         sys.exit(1)
                     results.append((archive_path, False))
+                    log("{} will upload".format(archive_path))
                 else:
                     if suptest == -1 and subtest == -1 and cattest == -1:
-                        log("{} looks empty! Will skip during upload".format(archive_path))
+                        log("{} empty, no upload".format(archive_path))
+                    else:
+                        log("{} found, no upload".format(archive_path))
                     results.append((archive_path, True))
                 
                 shutil.rmtree(untarred_path)
@@ -493,9 +502,13 @@ if sys.argv[1] == "postgres":
     def upload_archives(archives, port):
 
         if len(archives) == 0:
+            log("nothing to upload!")
             return
 
-        subprocess.call(psql + ["-p", str(port), "-f", BINPATH + '/psql/tin_setup_copy.psql'])
+        to_upload_sub = open("/tmp/{}.to_upload.sub".format(port), 'w')
+        to_upload_sup = open("/tmp/{}.to_upload.sup".format(port), 'w')
+        to_upload_cat = open("/tmp/{}.to_upload.cat".format(port), 'w')
+        new_archives = []
         for upload in archives:
 
             source_path     = os.path.dirname(upload)
@@ -518,6 +531,11 @@ if sys.argv[1] == "postgres":
             subprocess.call(["sed", "-i", "s/\s*$//g", supplier_path])
             subprocess.call(["sed", "-i", "s/\s*$//g", catalog_path])
 
+            new_archives.append((source_path, untarred_path, (substance_path, catalog_path, supplier_path), shortname))
+
+            #source_path, untarred_path, archive_paths, shortname = upload
+            #supplier_path = archive_paths[2]
+
             # our default supplier.txt doesn't have catalog mapping information that postgres wants
             # sooo instead of retrofitting everything we will just fix at upload time
             catid = None
@@ -534,16 +552,30 @@ if sys.argv[1] == "postgres":
             subprocess.call(["awk", "-v", "catid={}".format(catid), "{print $1 \" \" $2 \" \" catid}", supplier_path], stdout=supplier_catid_f)
             supplier_catid_f.close()
 
-            log("catid={}".format(catid))
+            to_upload_sub.write(substance_path + '\n')
+            to_upload_sup.write(supplier_path + '.psql' + '\n')
+            to_upload_cat.write(catalog_path + '\n')
 
-            log("beginning postgres upload of {} to port {}".format(upload, port))
-            subprocess.call(psql + ["-p", str(port), 
-            "--set=subp={}".format(substance_path), "--set=supp={}".format(supplier_path + '.psql'), "--set=catp={}".format(catalog_path), 
-            "-f", BINPATH + '/psql/tin_copy.psql'])
+            #supplier_catid_f = open(supplier_path + '.psql', 'rb')
+            #append_file(supplier_catid_f, psql_process.stdin)
 
-            shutil.rmtree(untarred_path)
+            #shutil.rmtree(untarred_path)
 
-        subprocess.call(psql + ["-p", str(port), "-f", BINPATH + '/psql/tin_cleanup_copy.psql'])
+        to_upload_sub.close()
+        to_upload_sup.close()
+        to_upload_cat.close()
+
+        upload_var_args = []
+        upload_var_args.append("--set=to_copy_sub={}".format("/tmp/{}.to_upload.sub".format(port)))
+        upload_var_args.append("--set=to_copy_sup={}".format("/tmp/{}.to_upload.sup".format(port)))
+        upload_var_args.append("--set=to_copy_cat={}".format("/tmp/{}.to_upload.cat".format(port)))
+
+        psql_process = subprocess.Popen(psql + ["-p", str(port), "--csv"] + upload_var_args + ["-f", BINPATH + '/psql/tin_master_copy.pgsql'])
+
+        #psql_process.stdin.close()
+
+        log("finished the python side of things, waiting for postgres to finish")
+        psql_process.wait()
 
     # upload strategy 0: query postgres to see which data is present, don't upload any data
     if upload_type == "query":

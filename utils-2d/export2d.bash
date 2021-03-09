@@ -28,7 +28,7 @@ cd /local2/load/export/tmp
 for pid in $(cat /dev/shm/partitions_to_export.bash); do
 	pname=$(grep -w $pid $BINDIR/partitions.txt | awk '{print $1}')
 	hac=$(printf $pname | awk '{print substr($1, 1, 3)}')
-	if [ -f $EXPORT_DEST/$hac/$pname.smi.gz ]; then
+	if [ -z $FORCE ] && [ -f $EXPORT_DEST/$hac/$pname.smi.gz ]; then
 		continue
 	fi
 	echo $pid

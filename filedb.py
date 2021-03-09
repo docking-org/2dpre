@@ -116,20 +116,22 @@ def main(args):
 
         idcolumn = old_fields if not args.idcolumn else args.idcolumn
         cmd = get_awk_command(old_fields, args.idcolumn, len_old)
-        
+       
+        # tip I found to change locale to C to speed up sort time 
+        os.environ["LC_ALL"] = 'C'
         with subprocess.Popen(["awk", cmd, new_fn], stdout=subprocess.PIPE) as proc_new_marker:
             # sort primarily by the selected column contents and secondarily by the primary key in the last column
             # since we've appended len_old+NR as the primary key of each new column entry, all duplicates from the new entries will be sorted *below* the original entries
             # this provisional key will also be important later during resolution (if the option is selected)
             sort_key_args = get_sort_key_args(column_args, idcolumn)
-            with subprocess.Popen(["sort"] + sort_key_args + [old_fn, '-'], stdin=proc_new_marker.stdout, stdout=subprocess.PIPE) as proc_sorted:
+            with subprocess.Popen(["sort", "--parallel=8", "-S1G"] + sort_key_args + [old_fn, '-'], stdin=proc_new_marker.stdout, stdout=subprocess.PIPE) as proc_sorted:
 
                 prev = None, None
                 curr_new = 0
 
                 for line in proc_sorted.stdout:
 
-                    tokens = line.decode('utf-8').rstrip().split(" ")
+                    tokens = line.decode('utf-8').rstrip().split()
                     idcolumn = old_fields if not args.idcolumn else args.idcolumn
                     column, idno = (' '.join([tokens[c-1] for c in all_columns]), int(tokens[idcolumn-1]))
                     column_left = ' '.join(tokens[:idcolumn-1])
@@ -147,6 +149,7 @@ def main(args):
                                 # we will also write it to our "resolved" list
                                 resolved_entries_f.write(str(idno) + ' ' + str(len_old + curr_new + 1) + '\n')
                             curr_new += 1
+                            idno = len_old + curr_new
                         prev = column, idno
 
                     else:
@@ -168,7 +171,7 @@ def main(args):
             # using this resolution technique to resolve foreign keys allows for the population of relational tables
             with subprocess.Popen(["sort", "-k1,1n", resolved_entries_fn], stdout=subprocess.PIPE) as proc_resolve:
                 for line in proc_resolve.stdout:
-                    print(line.decode('utf-8').split(' ')[1], end='')
+                    print(line.decode('utf-8').split(' ')[1], end='') # end='' because a newline is appended to the second column of resolved_entries
 
         # concatenate the new entries onto the old ones and voila! your database has been updated
         # note that this process is still valid even when the existing database is empty
