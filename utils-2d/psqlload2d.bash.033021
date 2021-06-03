@@ -87,6 +87,6 @@ done
 for partition in $(cat /dev/shm/partitions_to_postgres.txt); do
 	partname=$(basename $partition | tr '_' ' ')
 	partid=$(grep -w "$partname" $BINDIR/partitions.txt | awk '{print $3}')
-	jobid=$(sbatch --parsable --priority=TOP --cpus-per-task=5 -w $slurmhost -o $logdir/psql_$slurmhost/2dpsql_${partid}_${port}_${imageid}.out -J 2dpsqlx $BINDIR/2dload_slurm.bash postgres $partid $UPLOAD_OPTION)
+	jobid=$(sbatch --parsable --priority=TOP -w $slurmhost -o $logdir/psql_$slurmhost/2dpsql_${partid}_${port}_${imageid}.out -J 2dpsqlx $BINDIR/2dload_slurm.bash postgres $partid $UPLOAD_OPTION)
 	echo "launched upload_smart job for $partid with jobid=$jobid"
 done

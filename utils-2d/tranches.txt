@@ -6,3 +6,8 @@
 /nfs/db5/zinc22/2d/vendors/wuxi/2020-11 wuxi
 /nfs/db5/zinc22/2d/vendors/enamine/2021-02/private/S sx
 /nfs/db5/zinc22/2d/vendors/enamine/2021-02/private/M mx
+/nfs/db5/zinc22/2d/vendors/enamine/2021-02/superprivate/ftp-rdb-fr.chem-space.com/S sy
+/nfs/db5/zinc22/2d/vendors/enamine/2021-02/superprivate/ftp-rdb-fr.chem-space.com/M my
+/nfs/db5/zinc22/2d/vendors/enamine/2021-04/carboxylates/S sc
+/nfs/db5/zinc22/2d/vendors/enamine/2021-04/carboxylates/M mc1
+/nfs/db5/zinc22/2d/vendors/enamine/2021-04/acids-2104/M ma

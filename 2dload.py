@@ -499,7 +499,7 @@ if sys.argv[1] == "postgres":
 
         subprocess.call(psql + ["-p", str(port), "-f", BINPATH + '/psql/tin_wipe.psql'])
 
-    def upload_archives(archives, port):
+    def upload_archives(archives, port, upload_full=0):
 
         if len(archives) == 0:
             log("nothing to upload!")
@@ -569,6 +569,7 @@ if sys.argv[1] == "postgres":
         upload_var_args.append("--set=to_copy_sub={}".format("/tmp/{}.to_upload.sub".format(port)))
         upload_var_args.append("--set=to_copy_sup={}".format("/tmp/{}.to_upload.sup".format(port)))
         upload_var_args.append("--set=to_copy_cat={}".format("/tmp/{}.to_upload.cat".format(port)))
+        upload_var_args.append("--set=upload_full={}".format(upload_full))
 
         psql_process = subprocess.Popen(psql + ["-p", str(port), "--csv"] + upload_var_args + ["-f", BINPATH + '/psql/tin_master_copy.pgsql'])
 
@@ -587,6 +588,7 @@ if sys.argv[1] == "postgres":
 
     # upload strategy 1: wipe the existing database
     if upload_type == "clear":
+        are_you_sure_about_this = input("are you sure you want to wipe the existing database? ctrl-C to cancel")
         wipe_postgres(postgres_port)
 
     # upload strategy 2: find data not currently present on postgres and upload that data
@@ -595,16 +597,14 @@ if sys.argv[1] == "postgres":
         to_upload = [x[0] for x in filter(lambda x:not x[1], present_query)]
 
         log("uploading {} archives".format(len(to_upload)))
-        upload_archives(to_upload, postgres_port)
+        upload_archives(to_upload, postgres_port, upload_full=0)
 
 
     # upload strategy 3: remove any data present on postgres, upload everything in full
     if upload_type == "upload_full":
 
-        wipe_postgres(postgres_port)
         all_archives = [x[0] for x in query_present(source_dir, postgres_port)]
-
-        upload_archives(all_archives, postgres_port)
+        upload_archives(all_archives, postgres_port, upload_full=1)
 
     if upload_type == "bind":
         int_to_file(postgres_port, LOAD_BASE_DIR + '/' + partition_label + '/.port')
