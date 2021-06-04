@@ -1,210 +1,359 @@
-begin
+BEGIN;
 
-	--- prepare temporary tables for loading in data
-	create temporary table temp_load(smiles char(64), code char(64), id int, sub_fk int, code_fk int, cat_fk smallint);
-	create temporary table temp_load_sb(smiles mol, id int);
-	create temporary table temp_load_cc(code char(64), cat_fk smallint, id int);
+--- prepare temporary tables for loading in data
+CREATE TEMPORARY TABLE temp_load (
+    smiles char(64),
+    code char(64),
+    id int,
+    sub_fk int,
+    code_fk int,
+    cat_fk smallint,
+    tranche_id smallint
+);
 
-	alter table temp_load alter column id set default null;
-	alter table temp_load_sb alter column id set default null;
-	alter table temp_load_cc alter column id set default null;
+CREATE TEMPORARY TABLE temp_load_sb (
+    smiles mol,
+    id int,
+    tranche_id smallint
+);
 
-	--- create temp sequences for loading
-	create temporary sequence t_seq_sb;
-	select setval('t_seq_sb', currval('sub_id_seq');
-	alter table temp_load_sb alter column id set default nextval('t_seq_sb');
+CREATE TEMPORARY TABLE temp_load_cc (
+    code char(64),
+    cat_fk smallint,
+    id int,
+    tranche_id smallint
+);
 
-	create temporary sequence t_seq_cs;
-	select setval('t_seq_cs', currval('cat_sub_itm_id_seq'));
-	alter table temp_load_cs alter column id set default nextval('t_seq_cs');
+ALTER TABLE temp_load
+    ALTER COLUMN id SET DEFAULT NULL;
 
-	create temporary sequence t_seq_cc;
-	select setval('t_seq_cc', currval('cat_content_id_seq'));
-	alter table temp_load_cc alter column id set default nextval('t_seq_cc');	
+ALTER TABLE temp_load_sb
+    ALTER COLUMN id SET DEFAULT NULL;
 
-	create temporary sequence t_seq_load;
-	alter table temp_load alter column id set default nextval('t_seq_load');
+ALTER TABLE temp_load_cc
+    ALTER COLUMN id SET DEFAULT NULL;
 
-	--- source_f contains smiles:supplier:cat_id rows, with cat_id being the int describing the catalog the smiles:supplier pair comes from
-	copy temp_load(smiles, code, cat_fk) from :'source_f';
+--- create temp sequences for loading
+CREATE TEMPORARY SEQUENCE t_seq_sb;
 
-	--- load substance data to temp table
-	insert into
-		temp_load_sb(smiles)
-	select
-		smiles
-	from
-		temp_load
-	group by
-		smiles; --- group by makes sure there are no duplicates in this table
+SELECT
+    setval('t_seq_sb', :sb_count);
 
-	--- load cat_content data to temp table
-	insert into
-		temp_load_cc(code, cat_fk)
-	select
-		code, cat_fk
-	from 
-		temp_load
-	group by
-		code; --- make sure unique, same as before
+---currval('sub_id_seq'); CREATE TEMPORARY SEQUENCE t_seq_cs;
+SELECT
+    setval('t_seq_cs', :cs_count);
 
-	--- find existing sub_ids, update temp table with them
-	update
-		temp_load_sb
-	set
-		id = substance.sub_id
-	from
-		substance
-	where
-		substance.smiles = temp_load_sb.smiles;
+---currval('cat_sub_itm_id_seq')); CREATE TEMPORARY SEQUENCE t_seq_cc;
+SELECT
+    setval('t_seq_cc', :cc_count);
 
-	--- "create" new sub_ids for compounds not found
-	update 
-		temp_load_sb
-	set
-		id = nextval('t_seq_sb')
-	where
-		id = null;
+---currval('cat_content_id_seq'));
+--- source_f contains smiles:supplier:cat_id rows, with cat_id being the int describing the catalog the smiles:supplier pair comes from
+COPY temp_load (smiles, code, cat_fk, tranche_id)
+FROM
+    :'source_f';
 
+--- load substance data to temp table
+INSERT INTO temp_load_sb (smiles, tranche_id)
+SELECT
+    smiles,
+    tranche_id
+FROM
+    temp_load
+GROUP BY
+    smiles;
 
-	--- find existing cat_content_ids
-	update
-		temp_load_cc
-	set
-		id = catalog_content.cat_content_id
-	from
-		catalog_content
-	where
-		catalog_content.supplier_code = temp_load_cc.code;
+--- group by makes sure there are no duplicates in this table
+--- load cat_content data to temp table
+INSERT INTO temp_load_cc (code, cat_fk)
+SELECT
+    code,
+    cat_fk,
+    tranche_id
+FROM
+    temp_load
+GROUP BY
+    code;
 
-	--- "create" ids for new supplier codes
-	update
-		temp_load_cc
-	set
-		id = nextval('t_seq_cc')
-	where
-		id = null;
+--- make sure unique, same as before
+--- find existing sub_ids, update temp table with them
+UPDATE
+    temp_load_sb
+SET
+    id = substance.sub_id
+FROM
+    substance
+WHERE
+    --- this should speed up this query, making sure we only compare smiles with matching tranche ids
+    substance.tranche_id = temp_load_sb.tranche_id
+    AND substance.smiles = temp_load_sb.smiles;
 
-	--- resolve smiles ids
-	update
-		temp_load
-	set
-		sub_fk = temp_load_sb.id
-	from
-		temp_load_sb
-	where
-		temp_load.smiles = temp_load_sb.smiles;
+--- "create" new sub_ids for compounds not found
+UPDATE
+    temp_load_sb
+SET
+    id = nextval('t_seq_sb')
+WHERE
+    id = NULL;
 
-	--- resolve code ids
-	update
-		temp_load
-	set
-		cat_fk = temp_load_cc.id
-	from
-		temp_load_cc
-	where
-		temp_load.code = temp_load_cc.code;
+--- find existing cat_content_ids
+UPDATE
+    temp_load_cc
+SET
+    id = catalog_content.cat_content_id
+FROM
+    catalog_content
+WHERE
+    catalog_content.tranche_id = temp_load_cc.tranche_id
+    AND catalog_content.supplier_code = temp_load_cc.code;
 
-	--- find existing cat_substance entries and resolve cat_sub_itm_id
-	update
-		temp_load
-	set
-		id = cs.cat_sub_itm_id
-	from
-		catalog_substance cs
-	where
-		temp_load.code_fk <= currval('cat_content_id_seq') and
-		temp_load.sub_fk <= currval('sub_id_seq') and
-		cs.cat_content_fk = temp_load.cat_fk and
-		cs.sub_id_fk = temp_load.sub_fk;
+--- "create" ids for new supplier codes
+UPDATE
+    temp_load_cc
+SET
+    id = nextval('t_seq_cc')
+WHERE
+    id = NULL;
 
-	--- assign cat_sub_itm_id value to new entries
-	update
-		temp_load
-	set
-		id = nextval('t_seq_cs')
-	where
-		id = null;
+--- resolve smiles ids
+UPDATE
+    temp_load
+SET
+    sub_fk = temp_load_sb.id
+FROM
+    temp_load_sb
+WHERE
+    temp_load.tranche_id = temp_load_sb.tranche_id
+    AND temp_load.smiles = temp_load_sb.smiles;
 
-	--- clone the current tables to create the new ones
-	--- these names are appended with _t so they are not confused with the current version
-	--- it is necessary to modify a cloned version so that any users of the current table are not locked out
-	create table substance_t ( like substance including defaults including constraints including indexes );
-	create table catalog_content_t ( like catalog_content including defaults including constraints including indexes );
-	create table catalog_substance_t ( like catalog_substance including defaults including constraints including indexes );
+--- resolve code ids
+UPDATE
+    temp_load
+SET
+    cat_fk = temp_load_cc.id
+FROM
+    temp_load_cc
+WHERE
+    temp_load.tranche_id = temp_load_cc.tranche_id
+    AND temp_load.code = temp_load_cc.code;
 
-	--- now that we've identified all new entries, we want to prepare the database for insertion
-	--- with the large volumes of data that we work with, it is faster to disable indexes, insert the data, then rebuild the indexes
-	--- we can do this using a little trick
-        --- much less verbose than dropping each index then rebuilding individually
-        update pg_index set indisvalid = false where indrelid = ( select oid from pg_class where relname = 'substance_t' );
-        update pg_index set indisready = false where indrelid = ( select oid from pg_class where relname = 'substance_t' );
-        update pg_index set indisvalid = false where indrelid = ( select oid from pg_class where relname = 'catalog_content_t' );
-        update pg_index set indisready = false where indrelid = ( select oid from pg_class where relname = 'catalog_content_t' );
-        update pg_index set indisvalid = false where indrelid = ( select oid from pg_class where relname = 'catalog_substance_t' );
-        update pg_index set indisready = false where indrelid = ( select oid from pg_class where relname = 'catalog_substance_t' );
+--- find existing cat_substance entries and resolve cat_sub_itm_id
+UPDATE
+    temp_load
+SET
+    id = cs.cat_sub_itm_id
+FROM
+    catalog_substance cs
+WHERE
+    cs.tranche_id = temp_load.tranche_id
+    AND cs.cat_content_fk = temp_load.cat_fk
+    AND cs.sub_id_fk = temp_load.sub_fk;
 
-        --- disable any constraints/triggers to speed up loading - we know we will not violate any of them
-        alter table substance_t disable trigger all;
-        alter table catalog_content_t disable trigger all;
-        alter table catalog_substance_t disable trigger all;
+--- assign cat_sub_itm_id value to new entries
+UPDATE
+    temp_load
+SET
+    id = nextval('t_seq_cs')
+WHERE
+    id = NULL;
 
-	--- load new substance data in
-	insert into 
-		substance_t(sub_id, smiles) 
-	select 
-		id, smiles 
-	from 
-		temp_load_sb 
-	where 
-		temp_load_sb.id > currval('sub_id_seq'); --- only insert entries that don't exist yet, i.e their id is > the current table id
+--- clone the current tables to create the new ones
+--- these names are appended with _t so they are not confused with the current version
+--- it is necessary to modify a cloned version so that any users of the current table are not locked out
+CREATE TABLE substance_t (
+    LIKE substance INCLUDING defaults INCLUDING constraints INCLUDING indexes
+);
 
-	--- new cat_content data...
-	insert into 
-		catalog_content_t(cat_content_id, supplier_code, cat_id_fk) 
-	select 
-		id, code, cat_fk
-	from 
-		temp_load_cc 
-	where 
-		temp_load_cc.id > currval('cat_content_id_seq'); --- same idea as previous
+CREATE TABLE catalog_content_t (
+    LIKE catalog_content INCLUDING defaults INCLUDING constraints INCLUDING indexes
+);
 
-	--- and finally, cat_substance data
-	insert into 
-		catalog_substance_t(cat_content_fk, sub_id_fk, cat_sub_itm_id) 
-	select 
-		code_fk, smiles_fk, id
-	from 
-		temp_load
-	where 
-		temp_load.id > currval('cat_sub_itm_id_seq'); --- again, same idea
+CREATE TABLE catalog_substance_t (
+    LIKE catalog_substance INCLUDING defaults INCLUDING constraints INCLUDING indexes
+);
 
-	--- rebuild indices on the new tables
-	reindex table substance_t;
-	reindex table catalog_content_t;
-	reindex table catalog_substance_t;
+--- now that we've identified all new entries, we want to prepare the database for insertion
+--- with the large volumes of data that we work with, it is faster to disable indexes, insert the data, then rebuild the indexes
+--- we can disable indexes in postgres using a little trick
+--- much less verbose than dropping each index then rebuilding individually
+UPDATE
+    pg_index
+SET
+    indisvalid = FALSE
+WHERE
+    indrelid = (
+        SELECT
+            oid
+        FROM
+            pg_class
+        WHERE
+            relname = 'substance_t');
 
-	--- re-enable constraints/triggers once we're done
-	alter table substance_t enable trigger all;
-	alter table catalog_content_t enable trigger all;
-	alter table catalog_substance_t enable trigger all;
+UPDATE
+    pg_index
+SET
+    indisready = FALSE
+WHERE
+    indrelid = (
+        SELECT
+            oid
+        FROM
+            pg_class
+        WHERE
+            relname = 'substance_t');
 
-	--- swap the new table for the old
-	alter table substance rename to substance_trash;
-	alter table catalog_content rename to catalog_content_trash;
-	alter table catalog_substance_t rename to catalog_substance_trash;
+UPDATE
+    pg_index
+SET
+    indisvalid = FALSE
+WHERE
+    indrelid = (
+        SELECT
+            oid
+        FROM
+            pg_class
+        WHERE
+            relname = 'catalog_content_t');
 
-	alter table substance_t rename to substance;
-	alter table catalog_content_t rename to catalog_content;
-	alter table catalog_substance_t rename to catalog_substance;
+UPDATE
+    pg_index
+SET
+    indisready = FALSE
+WHERE
+    indrelid = (
+        SELECT
+            oid
+        FROM
+            pg_class
+        WHERE
+            relname = 'catalog_content_t');
 
-	--- update sequences with new values
-	select setval('sub_id_seq', currval('t_seq_sb'));
-	select setval('cat_sub_itm_id_seq', currval('t_seq_cs'));
-	select setval('cat_content_id_seq', currval('t_seq_cc'));	
+UPDATE
+    pg_index
+SET
+    indisvalid = FALSE
+WHERE
+    indrelid = (
+        SELECT
+            oid
+        FROM
+            pg_class
+        WHERE
+            relname = 'catalog_substance_t');
 
-	--- dispose of the old table
-        drop table substance_trash;
-        drop table catalog_content_trash;
-        drop table catalog_substance_trash;
-commit;
+UPDATE
+    pg_index
+SET
+    indisready = FALSE
+WHERE
+    indrelid = (
+        SELECT
+            oid
+        FROM
+            pg_class
+        WHERE
+            relname = 'catalog_substance_t');
+
+--- disable any constraints/triggers to speed up loading - we know we will not violate any of them
+ALTER TABLE substance_t DISABLE TRIGGER ALL;
+
+ALTER TABLE catalog_content_t DISABLE TRIGGER ALL;
+
+ALTER TABLE catalog_substance_t DISABLE TRIGGER ALL;
+
+--- load new substance data in
+INSERT INTO substance_t (sub_id, smiles, tranche_id, amw, logp)
+SELECT
+    id,
+    smiles,
+    tranche_id,
+    mol_amw(smiles),
+    mol_logp(smiles)
+FROM
+    temp_load_sb
+WHERE
+    --- we must provide the current count on each table as a variable to the script
+    --- currval is a volatile function, which means that any queries using it will not be optimized
+    --- quite annoying
+    temp_load_sb.id > :sb_count;
+
+---currval('sub_id_seq');
+--- only insert entries that don't exist yet, i.e their id is > the current table id
+--- new cat_content data...
+INSERT INTO catalog_content_t (cat_content_id, supplier_code, cat_id_fk, tranche_id)
+SELECT
+    id,
+    code,
+    cat_fk,
+    tranche_id
+FROM
+    temp_load_cc
+WHERE
+    temp_load_cc.id > :cc_count;
+
+---currval('cat_content_id_seq');
+--- same idea as previous
+--- and finally, cat_substance data
+INSERT INTO catalog_substance_t (cat_content_fk, sub_id_fk, cat_sub_itm_id, tranche_id)
+SELECT
+    code_fk,
+    smiles_fk,
+    id,
+    tranche_id
+FROM
+    temp_load
+WHERE
+    temp_load.id > :cs_count;
+
+---currval('cat_sub_itm_id_seq');
+--- again, same idea
+--- rebuild indices on the new tables
+REINDEX TABLE substance_t;
+
+REINDEX TABLE catalog_content_t;
+
+REINDEX TABLE catalog_substance_t;
+
+--- re-enable constraints/triggers once we're done
+ALTER TABLE substance_t ENABLE TRIGGER ALL;
+
+ALTER TABLE catalog_content_t ENABLE TRIGGER ALL;
+
+ALTER TABLE catalog_substance_t ENABLE TRIGGER ALL;
+
+--- swap the new table for the old
+ALTER TABLE substance RENAME TO substance_trash;
+
+ALTER TABLE catalog_content RENAME TO catalog_content_trash;
+
+ALTER TABLE catalog_substance_t RENAME TO catalog_substance_trash;
+
+ALTER TABLE substance_t RENAME TO substance;
+
+ALTER TABLE catalog_content_t RENAME TO catalog_content;
+
+ALTER TABLE catalog_substance_t RENAME TO catalog_substance;
+
+--- update sequences with new values
+SELECT
+    setval('sub_id_seq', currval('t_seq_sb'));
+
+SELECT
+    setval('cat_sub_itm_id_seq', currval('t_seq_cs'));
+
+SELECT
+    setval('cat_content_id_seq', currval('t_seq_cc'));
+
+--- dispose of the old table
+DROP TABLE substance_trash CASCADE;
+
+DROP TABLE catalog_content_trash CASCADE;
+
+DROP TABLE catalog_substance_trash CASCADE;
+
+COMMIT;
+
+ANALYZE;
+
+VACUUM;
+
