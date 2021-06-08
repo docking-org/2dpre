@@ -33,7 +33,7 @@ CREATE TABLE tranches (
 
 COPY tranches (tranche_name, tranche_id)
 FROM
-    :'tranche_info_f';
+    :'tranche_info_f' (DELIMITER ' ');
 
 --- tranceh_info_f contains the name of each tranche & their id
 CREATE TEMPORARY TABLE temp_load_sub (
@@ -53,15 +53,15 @@ CREATE TEMPORARY TABLE temp_load_cs (
 
 COPY temp_load_sub (sub_id, tranche_id)
 FROM
-    :'tranche_sub_id_f';
+    :'tranche_sub_id_f' (DELIMITER ' ');
 
 COPY temp_load_cc (cc_id, tranche_id)
 FROM
-    :'tranche_cc_id_f';
+    :'tranche_cc_id_f' (DELIMITER ' ');
 
 COPY temp_load_cs (cs_id, tranche_id)
 FROM
-    :'tranche_cs_id_f';
+    :'tranche_cs_id_f' (DELIMITER ' ');
 
 --- tranche_sub_id_f contains the sub_id of every substance in database, along with tranche id
 --- all files read in are created by the python script

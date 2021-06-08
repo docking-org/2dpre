@@ -35,14 +35,14 @@ def call_psql(db_port, cmd=None, psqlfile=None, vars={}, getdata=False, rethandl
 def check_patched(db_port):
     srcdir = "/local2/load"
     for partition in os.listdir(srcdir):
-        ppath = "/".join(srcdir, partition)
-        if os.path.isfile(ppath + "/.config"):
+        ppath = "/".join([srcdir, partition])
+        if os.path.isfile(ppath + "/.port"):
             with open(ppath + "/.port") as portf:
                 try:
                     thisport = int(portf.read())
                     if thisport == db_port and os.path.isfile(ppath + "/.patched"):
                         return True, ppath
-                    else:
+                    elif thisport == db_port:
                         return False, ppath
                 except:
                     continue
@@ -51,21 +51,27 @@ def check_patched(db_port):
     return True, None
 
 def patch_database(db_port, db_path):
+    print(db_port, db_path)
     sub_id_annotated = open(db_path + "/sub_id_tranche_id", 'w')
     cc_id_annotated = open(db_path + "/cc_id_tranche_id", 'w')
     cs_id_annotated = open(db_path + "/cs_id_tranche_id", 'w')
     tranche_info = open(db_path + "/tranche_info", 'w')
     tranche_id = 1
 
-    for tranche in db_path + "/src":
+    for tranche in sorted(os.listdir(db_path + "/src")):
+        print(tranche)
         if not (tranche[0] == 'H' and (tranche[3] == "P" or tranche[3] == "M")):
             continue
         srcpath = db_path + "/src/" + tranche
         tranche_info.write("{} {}\n".format(tranche, tranche_id))
 
-        subprocess.call(["awk", "-v", "a={}".format(tranche_id), "{print $3 \" \" a}", srcpath + "/substance.txt"], stdout=sub_id_annotated)
-        subprocess.call(["awk", "-v", "a={}".format(tranche_id), "{print $2 \" \" a}", srcpath + "/supplier.txt" ], stdout=cc_id_annotated)
-        subprocess.call(["awk", "-v", "a={}".format(tranche_id), "{print $3 \" \" a}", srcpath + "/catalog.txt"  ], stdout=cs_id_annotated)
+        p1 = subprocess.Popen(["awk", "-v", "a={}".format(tranche_id), "{print $3 \" \" a}", srcpath + "/substance.txt"], stdout=sub_id_annotated)
+        p2 = subprocess.Popen(["awk", "-v", "a={}".format(tranche_id), "{print $2 \" \" a}", srcpath + "/supplier.txt" ], stdout=cc_id_annotated)
+        p3 = subprocess.Popen(["awk", "-v", "a={}".format(tranche_id), "{print $3 \" \" a}", srcpath + "/catalog.txt"  ], stdout=cs_id_annotated)
+        p1.wait()
+        p2.wait()
+        p3.wait()
+
         tranche_id += 1
 
     sub_tot = sup_tot = cat_tot = 0
@@ -85,6 +91,9 @@ def patch_database(db_port, db_path):
         "sup_tot" : sup_tot,
         "cat_tot" : cat_tot
     }
+    print(psqlvars)
+    # here for testing
+    return
 
     call_psql(db_port, psqlfile=BINDIR + "/psql/tin_postgres_patch.pgsql", vars=psqlvars)
 
@@ -94,6 +103,7 @@ except:
     print("port must be an integer!")
     sys.exit(1)
 
+print(database_port)
 patched, dbpath = check_patched(database_port)
 if not patched:
     print("this database has not been patched yet, doing so now!")
