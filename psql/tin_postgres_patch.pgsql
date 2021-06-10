@@ -30,19 +30,6 @@ CREATE TABLE catalog_substance_t (
     LIKE catalog_substance INCLUDING defaults
 );
 
-SELECT
-    logg ('adding constraints to cloned tables');
-
---- create the foreign key constraints for this new table- we want to do these before indices etc. so that we can disable them before we load in data
-ALTER TABLE catalog_content_t
-    ADD CONSTRAINT "catalog_content_cat_id_fk_fkey_t" FOREIGN KEY (cat_id_fk) REFERENCES catalog (cat_id) ON DELETE CASCADE;
-
-ALTER TABLE catalog_substance_t
-    ADD CONSTRAINT "catalog_substances_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk) REFERENCES catalog_content_t (cat_content_id) ON DELETE CASCADE;
-
-ALTER TABLE catalog_substance_t
-    ADD CONSTRAINT "catalog_substances_sub_id_fk_fkey_t" FOREIGN KEY (sub_id_fk) REFERENCES substance_t (sub_id) ON UPDATE CASCADE ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
-
 --- disable triggers to speed up loading performance, as we are sure we will not violate any of the constraints
 ALTER TABLE catalog_content_t DISABLE TRIGGER ALL;
 
@@ -294,6 +281,18 @@ BEGIN
             EXECUTE 'alter table ' || pky.tablename || '_t add primary key (' || pky.columnname || ')';
             RAISE info '[%]: finished building pkey: %_pkey', clock_timestamp(), pky.tablename;
         END LOOP;
+    SELECT
+        logg ('building constraints...');
+    --- create the foreign key constraints for this new table- we want to do these before indices etc. so that we can disable them before we load in data
+    ALTER TABLE catalog_content_t
+        ADD CONSTRAINT "catalog_content_cat_id_fk_fkey_t" FOREIGN KEY (cat_id_fk) REFERENCES catalog (cat_id) ON DELETE CASCADE;
+    ALTER TABLE catalog_substance_t
+        ADD CONSTRAINT "catalog_substances_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk) REFERENCES catalog_content_t (cat_content_id) ON DELETE CASCADE;
+    ALTER TABLE catalog_substance_t
+        ADD CONSTRAINT "catalog_substances_sub_id_fk_fkey_t" FOREIGN KEY (sub_id_fk) REFERENCES substance_t (sub_id) ON UPDATE CASCADE ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+    ALTER TABLE substance ENABLE TRIGGER ALL;
+    ALTER TABLE catalog_content ENABLE TRIGGER ALL;
+    ALTER TABLE catalog_substance ENABLE TRIGGER ALL;
     --- swap out old table for new table
     ALTER TABLE substance RENAME TO substance_trash;
     ALTER TABLE catalog_content RENAME TO catalog_content_trash;
@@ -335,12 +334,6 @@ BEGIN
 END
 $$
 LANGUAGE plpgsql;
-
-ALTER TABLE substance ENABLE TRIGGER ALL;
-
-ALTER TABLE catalog_content ENABLE TRIGGER ALL;
-
-ALTER TABLE catalog_substance ENABLE TRIGGER ALL;
 
 SELECT
     logg ('cleaning up...');
