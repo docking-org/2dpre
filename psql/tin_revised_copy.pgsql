@@ -38,7 +38,7 @@ ALTER TABLE catalog_substance_t DISABLE TRIGGER ALL;
 ALTER TABLE substance_t DISABLE TRIGGER ALL;
 
 SELECT
-    logg ('copying substance data to clone table...')
+    logg ('copying substance data to clone table...');
 INSERT INTO substance_t
 SELECT
     *
@@ -46,7 +46,7 @@ FROM
     substance;
 
 SELECT
-    logg ('copying catalog_content data to clone table...')
+    logg ('copying catalog_content data to clone table...');
 INSERT INTO catalog_content_t
 SELECT
     *
@@ -54,7 +54,7 @@ FROM
     catalog_content;
 
 SELECT
-    logg ('copying catalog_substance data to clone table')
+    logg ('copying catalog_substance data to clone table');
 INSERT INTO catalog_substance_t
 SELECT
     *
@@ -420,7 +420,6 @@ BEGIN
         END LOOP;
     SELECT
         logg ('adding constraints');
-    --- create the foreign key constraints for this new table- we want to do these before indices etc. so that we can disable them before we load in data
     ALTER TABLE catalog_content_t
         ADD CONSTRAINT "catalog_content_cat_id_fk_fkey_t" FOREIGN KEY (cat_id_fk) REFERENCES catalog (cat_id) ON DELETE CASCADE;
     ALTER TABLE catalog_substance_t

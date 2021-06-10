@@ -38,7 +38,7 @@ ALTER TABLE catalog_substance_t DISABLE TRIGGER ALL;
 ALTER TABLE substance_t DISABLE TRIGGER ALL;
 
 SELECT
-    logg ('copying substance data to clone table...')
+    logg ('copying substance data to clone table...');
 INSERT INTO substance_t
 SELECT
     *
@@ -46,7 +46,7 @@ FROM
     substance;
 
 SELECT
-    logg ('copying catalog_content data to clone table...')
+    logg ('copying catalog_content data to clone table...');
 INSERT INTO catalog_content_t
 SELECT
     *
@@ -54,7 +54,7 @@ FROM
     catalog_content;
 
 SELECT
-    logg ('copying catalog_substance data to clone table')
+    logg ('copying catalog_substance data to clone table');
 INSERT INTO catalog_substance_t
 SELECT
     *
