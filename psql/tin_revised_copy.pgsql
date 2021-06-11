@@ -15,6 +15,28 @@ END;
 $$
 LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION invalidate_index (indname text)
+    RETURNS integer
+    AS $$
+BEGIN
+    UPDATE
+        pg_index
+    SET
+        indisvalid = FALSE,
+        indisready = FALSE
+    WHERE
+        indexrelid = (
+            SELECT
+                oid
+            FROM
+                pg_class
+            WHERE
+                relname = indname);
+    RETURN 0;
+END;
+$$
+LANGUAGE plpgsql;
+
 SELECT
     logg ('cloning table schema');
 
@@ -30,7 +52,39 @@ CREATE TABLE catalog_substance_t (
     LIKE catalog_substance INCLUDING defaults
 );
 
---- disable triggers to speed up loading performance, as we are sure we will not violate any of the constraints
+ALTER TABLE substance_t
+    ADD PRIMARY KEY (sub_id);
+
+ALTER TABLE catalog_content_t
+    ADD PRIMARY KEY (cat_content_id);
+
+ALTER TABLE catalog_substance_t
+    ADD PRIMARY KEY (cat_sub_itm_id);
+
+SELECT
+    invalidate_index ('substance_t_pkey');
+
+SELECT
+    invalidate_index ('catalog_content_t_pkey');
+
+SELECT
+    invalidate_index ('catalog_substance_t_pkey');
+
+--- we are quite sure that the foreign key constraints will stay valid after this update, so we don't need to do any validation
+--- unfortunately creating the constraint anew requires validation of all data currently in the tables, so we do it before loading in data and simply disable triggers, stopping any validation during load time
+--- you may also know that foreign keys require a unique index on the referenced column, which is awkward, since we do not want to create indexes before we load in data
+--- so we use a sneaky trick to get around this- we create the unique indexes (primary keys), and alter the system tables to invalidate the index (see above)
+--- this means that the index will not get updated when inserting/updating rows, which is what we want
+--- for all the foreign key constraint cares, the unique index exists and is working. After loading in data we just perform a reindex operation, re-enable triggers, and everything is hunky-dory!
+ALTER TABLE catalog_content_t
+    ADD CONSTRAINT "catalog_content_cat_id_fk_fkey_t" FOREIGN KEY (cat_id_fk) REFERENCES catalog (cat_id) ON DELETE CASCADE;
+
+ALTER TABLE catalog_substance_t
+    ADD CONSTRAINT "catalog_substances_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk) REFERENCES catalog_content_t (cat_content_id) ON DELETE CASCADE;
+
+ALTER TABLE catalog_substance_t
+    ADD CONSTRAINT "catalog_substances_sub_id_fk_fkey_t" FOREIGN KEY (sub_id_fk) REFERENCES substance_t (sub_id) ON UPDATE CASCADE ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
 ALTER TABLE catalog_content_t DISABLE TRIGGER ALL;
 
 ALTER TABLE catalog_substance_t DISABLE TRIGGER ALL;
@@ -39,6 +93,7 @@ ALTER TABLE substance_t DISABLE TRIGGER ALL;
 
 SELECT
     logg ('copying substance data to clone table...');
+
 INSERT INTO substance_t
 SELECT
     *
@@ -47,6 +102,7 @@ FROM
 
 SELECT
     logg ('copying catalog_content data to clone table...');
+
 INSERT INTO catalog_content_t
 SELECT
     *
@@ -55,6 +111,7 @@ FROM
 
 SELECT
     logg ('copying catalog_substance data to clone table');
+
 INSERT INTO catalog_substance_t
 SELECT
     *
@@ -338,7 +395,6 @@ DROP TABLE temp_load_cs;
 
 /*
  *  BEGIN BOILERPLATE FINALIZATION
- *  finalization code used for any large-scale update
  */
 CREATE TEMPORARY TABLE index_save (
     tablename text,
@@ -356,7 +412,7 @@ CREATE TEMPORARY TABLE pkey_save (
     columnname text
 );
 
---- initialize record of constraints to be rebuilt
+--- initialize record of constraints, just for renaming them after we're done
 INSERT INTO constraint_save (
     tablename,
     constraintname) (
@@ -367,7 +423,7 @@ INSERT INTO constraint_save (
         (
             'catalog_substance', 'catalog_substance_sub_id_fk_fkey'));
 
---- pkeys are both an index and a constraint, so we deal with them separately. initialize record of pkeys here
+--- keep a record of the pkeys so that we can rename them afterwards
 INSERT INTO pkey_save (
     tablename,
     columnname) (
@@ -379,18 +435,21 @@ INSERT INTO pkey_save (
             'catalog_substance', 'cat_sub_itm_id'));
 
 --- initialize our record of indexes we need to rebuild
-INSERT INTO index_save
+--- also used for renaming them afterwards
+INSERT INTO index_save (
+    tablename,
+    indexname,
+    indexdef)
 SELECT
-    (tablename,
-        indexname,
-        indexdef)
+    tablename,
+    indexname,
+    indexdef
 FROM
     pg_indexes
 WHERE
     tablename IN ('substance', 'catalog_content', 'catalog_substance')
     AND indexname NOT LIKE '%_pkey';
 
---- don't build pkey indexes from their indexdef, that will not create (exactly) a pkey
 DO $$
 DECLARE
     idx index_save % rowtype;
@@ -398,7 +457,12 @@ DECLARE
     pky pkey_save % rowtype;
     idxdef text;
 BEGIN
-    --- first generate normal indexes
+    --- rebuild the primary key indexes we invalidated earlier
+    RAISE info '[%]: building primary key indexes...', clock_timestamp(), idx.indexname;
+    REINDEX TABLE substance_t;
+    REINDEX TABLE catalog_content_t;
+    REINDEX TABLE catalog_substance_t;
+    --- generate normal indexes
     FOR idx IN
     SELECT
         *
@@ -406,26 +470,13 @@ BEGIN
         index_save LOOP
             idxdef := REPLACE(idx.indexdef, idx.indexname, CONCAT(idx.indexname, '_t'));
             idxdef := REPLACE(idxdef, CONCAT('public.', idx.tablename), CONCAT('public.', idx.tablename, '_t'));
-            EXECUTE idxdef;
+            EXECUTE '' || idxdef;
             RAISE info '[%]: finished building index: %', clock_timestamp(), idx.indexname;
         END LOOP;
-    --- then generate pkey indexes
-    FOR pky IN
-    SELECT
-        *
-    FROM
-        pkey_save LOOP
-            EXECUTE 'alter table ' || pky.tablename || '_t add primary key (' || pky.columnname || ')';
-            RAISE info '[%]: finished building pkey: %_pkey', clock_timestamp(), pky.tablename;
-        END LOOP;
-    SELECT
-        logg ('adding constraints');
-    ALTER TABLE catalog_content_t
-        ADD CONSTRAINT "catalog_content_cat_id_fk_fkey_t" FOREIGN KEY (cat_id_fk) REFERENCES catalog (cat_id) ON DELETE CASCADE;
-    ALTER TABLE catalog_substance_t
-        ADD CONSTRAINT "catalog_substances_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk) REFERENCES catalog_content_t (cat_content_id) ON DELETE CASCADE;
-    ALTER TABLE catalog_substance_t
-        ADD CONSTRAINT "catalog_substances_sub_id_fk_fkey_t" FOREIGN KEY (sub_id_fk) REFERENCES substance_t (sub_id) ON UPDATE CASCADE ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+    --- re-enable triggers. We could have done this earlier if we wanted
+    ALTER TABLE substance ENABLE TRIGGER ALL;
+    ALTER TABLE catalog_content ENABLE TRIGGER ALL;
+    ALTER TABLE catalog_substance ENABLE TRIGGER ALL;
     --- swap out old table for new table
     ALTER TABLE substance RENAME TO substance_trash;
     ALTER TABLE catalog_content RENAME TO catalog_content_trash;
@@ -467,12 +518,6 @@ BEGIN
 END
 $$
 LANGUAGE plpgsql;
-
-ALTER TABLE substance ENABLE TRIGGER ALL;
-
-ALTER TABLE catalog_content ENABLE TRIGGER ALL;
-
-ALTER TABLE catalog_substance ENABLE TRIGGER ALL;
 
 SELECT
     logg ('cleaning up...');
