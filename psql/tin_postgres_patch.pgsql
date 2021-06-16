@@ -74,10 +74,10 @@ ALTER TABLE catalog_content_t
     ADD CONSTRAINT "catalog_content_cat_id_fk_fkey_t" FOREIGN KEY (cat_id_fk) REFERENCES catalog (cat_id) ON DELETE CASCADE;
 
 ALTER TABLE catalog_substance_t
-    ADD CONSTRAINT "catalog_substances_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk) REFERENCES catalog_content_t (cat_content_id) ON DELETE CASCADE;
+    ADD CONSTRAINT "catalog_substances_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk, tranche_id) REFERENCES catalog_content_t (cat_content_id, tranche_id) ON DELETE CASCADE;
 
 ALTER TABLE catalog_substance_t
-    ADD CONSTRAINT "catalog_substances_sub_id_fk_fkey_t" FOREIGN KEY (sub_id_fk) REFERENCES substance_t (sub_id) ON UPDATE CASCADE ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT "catalog_substances_sub_id_fk_fkey_t" FOREIGN KEY (sub_id_fk, tranche_id) REFERENCES substance_t (sub_id, tranche_id) ON UPDATE CASCADE ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE catalog_content_t DISABLE TRIGGER ALL;
 
@@ -276,21 +276,21 @@ INSERT INTO pkey_save (
 
 --- initialize our record of indexes we need to rebuild
 --- also used for renaming them afterwards
-INSERT INTO index_save (
-    tablename,
-    indexname,
-    indexdef)
+--- in this case we are actually wiping out most existing indexes and replacing them with different ones
+--- so we don't want to save the previous indexes
+/*INSERT INTO index_save (
+ tablename,
+ indexname,
+ indexdef)
 SELECT
-    tablename,
-    indexname,
-    indexdef
+ tablename,
+ indexname,
+ indexdef
 FROM
-    pg_indexes
+ pg_indexes
 WHERE
-    tablename IN ('substance', 'catalog_content', 'catalog_substance')
-    AND indexname NOT LIKE '%_pkey';
-
-
+ tablename IN ('substance', 'catalog_content', 'catalog_substance')
+ AND indexname NOT LIKE '%_pkey';*/
 /* boilerplate exception */
 --- these aren't actually indexes yet, but we want to build them in the patched database
 INSERT INTO index_save (
@@ -317,7 +317,7 @@ BEGIN
     RAISE info '[%]: building primary key indexes...', clock_timestamp(), idx.indexname;
     REINDEX TABLE substance_t;
     REINDEX TABLE catalog_content_t;
-    REINDEX TABLE catalog_substance_t;
+    --- we don't need a primary key index on catalog_substance, none of the queries we perform care about cat_sub_itm_id
     --- first generate normal indexes
     FOR idx IN
     SELECT
