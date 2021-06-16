@@ -53,22 +53,16 @@ CREATE TABLE catalog_substance_t (
 );
 
 ALTER TABLE substance_t
-    ADD PRIMARY KEY (sub_id);
+    ADD PRIMARY KEY (sub_id, tranche_id);
 
 ALTER TABLE catalog_content_t
-    ADD PRIMARY KEY (cat_content_id);
-
-ALTER TABLE catalog_substance_t
-    ADD PRIMARY KEY (cat_sub_itm_id);
+    ADD PRIMARY KEY (cat_content_id, tranche_id);
 
 SELECT
     invalidate_index ('substance_t_pkey');
 
 SELECT
     invalidate_index ('catalog_content_t_pkey');
-
-SELECT
-    invalidate_index ('catalog_substance_t_pkey');
 
 --- we are quite sure that the foreign key constraints will stay valid after this update, so we don't need to do any validation
 --- unfortunately creating the constraint anew requires validation of all data currently in the tables, so we do it before loading in data and simply disable triggers, stopping any validation during load time
@@ -274,13 +268,11 @@ INSERT INTO constraint_save (
 --- keep a record of the pkeys so that we can rename them afterwards
 INSERT INTO pkey_save (
     tablename,
-    columnname) (
+    columnnames) (
     VALUES (
-            'substance', 'sub_id'),
+            'substance', 'sub_id, tranche_id'),
         (
-            'catalog_content', 'cat_content_id'),
-        (
-            'catalog_substance', 'cat_sub_itm_id'));
+            'catalog_content', 'cat_content_id, tranche_id'));
 
 --- initialize our record of indexes we need to rebuild
 --- also used for renaming them afterwards
@@ -306,11 +298,11 @@ INSERT INTO index_save (
     indexname,
     indexdef) (
     VALUES (
-            'substance', 'substance_tranche_id_idx', 'CREATE INDEX substance_tranche_id_idx ON public.substance (tranche_id);'),
+            'catalog_content', 'catalog_content_supplier_code_idx', 'CREATE INDEX catalog_content_supplier_code_idx ON public.catalog_content (supplier_code)'),
         (
-            'catalog_content', 'catalog_content_tranche_id_idx', 'CREATE INDEX catalog_content_tranche_id_idx ON public.catalog_content (tranche_id);'),
+            'catalog_substance', 'catalog_substance_sub_id_fk_idx', 'CREATE INDEX catalog_substance_sub_id_fk_idx ON public.catalog_substance (sub_id_fk, tranche_id)'),
         (
-            'catalog_substance', 'catalog_substance_tranche_id_idx', 'CREATE INDEX catalog_substance_tranche_id_idx ON public.catalog_substance (tranche_id);'));
+            'catalog_substance', 'catalog_substance_cat_id_fk_idx', 'CREATE INDEX catalog_substance_cat_id_fk_idx ON public.catalog_substance (cat_content_fk, tranche_id)'));
 
 
 /* end of boilerplate exception */
