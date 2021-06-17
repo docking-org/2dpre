@@ -54,7 +54,7 @@ def patch_database(db_port, db_path):
     print(db_port, db_path)
     sub_id_annotated = open(db_path + "/sub_id_tranche_id", 'w')
     cc_id_annotated = open(db_path + "/cc_id_tranche_id", 'w')
-    #cs_id_annotated = open(db_path + "/cs_id_tranche_id", 'w')
+    cs_id_annotated = open(db_path + "/cs_id_tranche_id", 'w')
     tranche_info = open(db_path + "/tranche_info", 'w')
     tranche_id = 1
 
@@ -67,10 +67,10 @@ def patch_database(db_port, db_path):
 
         p1 = subprocess.Popen(["awk", "-v", "a={}".format(tranche_id), "{print $3 \" \" a}", srcpath + "/substance.txt"], stdout=sub_id_annotated)
         p2 = subprocess.Popen(["awk", "-v", "a={}".format(tranche_id), "{print $2 \" \" a}", srcpath + "/supplier.txt" ], stdout=cc_id_annotated)
-        #p3 = subprocess.Popen(["awk", "-v", "a={}".format(tranche_id), "{print $3 \" \" a}", srcpath + "/catalog.txt"  ], stdout=cs_id_annotated)
+        p3 = subprocess.Popen(["awk", "-v", "a={}".format(tranche_id), "{print $3 \" \" a}", srcpath + "/catalog.txt"  ], stdout=cs_id_annotated)
         p1.wait()
         p2.wait()
-        #p3.wait()
+        p3.wait()
 
         tranche_id += 1
 
@@ -85,15 +85,13 @@ def patch_database(db_port, db_path):
     psqlvars = {
         "tranche_sub_id_f" : sub_id_annotated.name,
         "tranche_cc_id_f" : cc_id_annotated.name,
-        #"tranche_cs_id_f" : cs_id_annotated.name,
+        "tranche_cs_id_f" : cs_id_annotated.name,
         "tranche_info_f" : tranche_info.name,
         "sub_tot" : sub_tot,
         "sup_tot" : sup_tot,
         "cat_tot" : cat_tot
     }
     print(psqlvars)
-    # here for testing
-    return
 
     call_psql(db_port, psqlfile=BINDIR + "/psql/tin_postgres_patch.pgsql", vars=psqlvars)
 
