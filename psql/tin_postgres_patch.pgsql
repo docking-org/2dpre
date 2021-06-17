@@ -1,6 +1,7 @@
 \set ON_ERROR_ROLLBACK on
 BEGIN;
 
+
 /*
  *  BEGIN BOILERPLATE INITIALIZATION
  *  initialization code for any large-scale update to TIN
@@ -52,17 +53,19 @@ CREATE TABLE catalog_substance_t (
     LIKE catalog_substance INCLUDING defaults
 );
 
+
 /* this bit is not boilerplate */
 ALTER TABLE substance_t
-    ADD COLUMN tranche_id smallint default 0;
+    ADD COLUMN tranche_id smallint DEFAULT 0;
 
 ALTER TABLE catalog_content_t
-    ADD COLUMN tranche_id smallint default 0;
+    ADD COLUMN tranche_id smallint DEFAULT 0;
 
 ALTER TABLE catalog_substance_t
-    ADD COLUMN tranche_id smallint default 0;
-/* end not boilerplate bit */
+    ADD COLUMN tranche_id smallint DEFAULT 0;
 
+
+/* end not boilerplate bit */
 ALTER TABLE substance_t
     ADD PRIMARY KEY (sub_id, tranche_id);
 
@@ -191,7 +194,6 @@ FROM
 
 --- tranche_sub_id_f contains the sub_id of every substance in database, along with tranche id
 --- all files read in are created by the python script
-
 --- set default values for table ids to the sequences we created
 ALTER TABLE substance_t
     ALTER COLUMN sub_id SET DEFAULT nextval('sub_id_seq');
@@ -243,6 +245,7 @@ WHERE
 
 SELECT
     logg ('finished update on cat substance table');
+
 
 /*
  *  END MAIN PROCEDURE
@@ -316,10 +319,13 @@ INSERT INTO index_save (
         (
             'catalog_substance', 'catalog_substance_cat_id_fk_idx', 'CREATE INDEX catalog_substance_cat_id_fk_idx ON public.catalog_substance (cat_content_fk, tranche_id)'));
 
-select logg('building primary key indexes...');
+SELECT
+    logg ('building primary key indexes...');
 
-reindex table substance_t;
-reindex table catalog_content_t;
+REINDEX TABLE substance_t;
+
+REINDEX TABLE catalog_content_t;
+
 
 /* end of boilerplate exception */
 DO $$
@@ -337,34 +343,48 @@ BEGIN
             EXECUTE '' || idxdef;
             RAISE info '[%]: finished building index: %', clock_timestamp(), idx.indexname;
         END LOOP;
-END 
-$$ 
-language plpgsql;
+END
+$$
+LANGUAGE plpgsql;
 
-    --- re-enable triggers. We could have done this earlier if we wanted
+--- re-enable triggers. We could have done this earlier if we wanted
 ALTER TABLE substance_t ENABLE TRIGGER ALL;
+
 ALTER TABLE catalog_content_t ENABLE TRIGGER ALL;
+
 ALTER TABLE catalog_substance_t ENABLE TRIGGER ALL;
-    --- swap out old table for new table
-    ALTER TABLE substance RENAME TO substance_trash;
-    ALTER TABLE catalog_content RENAME TO catalog_content_trash;
-    ALTER TABLE catalog_substance RENAME TO catalog_substance_trash;
-    ALTER TABLE substance_t RENAME TO substance;
-    ALTER TABLE catalog_content_t RENAME TO catalog_content;
-    ALTER TABLE catalog_substance_t RENAME TO catalog_substance;
-select logg('tables swapped out!')
+
+--- swap out old table for new table
+ALTER TABLE substance RENAME TO substance_trash;
+
+ALTER TABLE catalog_content RENAME TO catalog_content_trash;
+
+ALTER TABLE catalog_substance RENAME TO catalog_substance_trash;
+
+ALTER TABLE substance_t RENAME TO substance;
+
+ALTER TABLE catalog_content_t RENAME TO catalog_content;
+
+ALTER TABLE catalog_substance_t RENAME TO catalog_substance;
+
+SELECT
+    logg ('tables swapped out!');
     --- dispose of old table
     DROP TABLE substance_trash CASCADE;
-    DROP TABLE catalog_content_trash CASCADE;
-    DROP TABLE catalog_substance_trash CASCADE;
-select logg('old tables disposed!')
+
+DROP TABLE catalog_content_trash CASCADE;
+
+DROP TABLE catalog_substance_trash CASCADE;
+
+SELECT
+    logg ('old tables disposed!')
     --- rename indexes (so we don't get indexes like %_t_t_t_t or w.e)
-do $$
-declare
-	idx index_save % rowtype;
-	cns constraint_save % rowtype;
-	pky pkey_save % rowtype;
-begin
+    DO $$
+DECLARE
+    idx index_save % rowtype;
+    cns constraint_save % rowtype;
+    pky pkey_save % rowtype;
+BEGIN
     FOR idx IN
     SELECT
         *
@@ -408,3 +428,4 @@ COMMIT;
 VACUUM;
 
 ANALYZE;
+
