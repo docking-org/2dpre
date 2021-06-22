@@ -94,27 +94,23 @@ def patch_database_postgres(db_port, db_path):
     print(psqlvars)
 
     call_psql(db_port, psqlfile=BINDIR + "/psql/tin_postgres_patch.pgsql", vars=psqlvars)
-    with open(db_path + "/.patchedpostgres", 'w') as patchmarker:
-        patchmarker.write("patched!")
 
 
 database_source_dirs_prepatch = ['/nfs/exb/zinc22/2dpre_results/mx', '/nfs/exb/zinc22/2dpre_results/mu', '/nfs/exb/zinc22/2dpre_results/m', '/nfs/exb/zinc22/2dpre_results/s', '/nfs/exb/zinc22/2dpre_results/ma', '/nfs/exb/zinc22/2dpre_results/sx', '/nfs/exb/zinc22/2dpre_results/su', '/nfs/exb/zinc22/2dpre_results/wuxi', '/nfs/exb/zinc22/2dpre_results/sc', '/nfs/exb/zinc22/2dpre_results/my', '/nfs/exb/zinc22/2dpre_results/mc', '/nfs/exb/zinc22/2dpre_results/mcule', '/nfs/exb/zinc22/2dpre_results/sy']
 def patch_database_catsub(db_port, db_path):
-    all_source_f = open(db_path + "/catsub_patch_source", 'w')
-    trancheid = 1
-    for tranche in sorted(os.listdir(db_path + "/src")):
-        if not (tranche[0] == 'H' and (tranche[3] == "P" or tranche[3] == "M")):
-            continue
-        print(tranche)
-        for srcdir in database_source_dirs_prepatch:
-            subprocess.call(["awk", "-v", "a={}".format(trancheid), "{print $0 \"\\t\" a}", srcdir + "/" + tranche], stdout=all_source_f)
-        trancheid += 1
-    psqlvars = {
-        "source_f" : db_path + "/catsub_patch_source"
-    }
-    call_psql(db_port, psqlfile=BINDIR + "/psql/tin_catsub_patch.pgsql", vars=psqlvars)
-    with open(db_path + "/.patchedcatsub", 'w') as patchmarker:
-        patchmarker.write("patched!")
+	all_source_f = open(db_path + "/catsub_patch_source")
+	trancheid = 1
+	for tranche in sorted(os.listdir(db_path + "/src")):
+		if not (tranche[0] == 'H' and (tranche[3] == "P" or tranche[3] == "M")):
+			continue
+		print(tranche)
+		for srcdir in database_source_dirs_prepatch:
+			subprocess.call(["awk", "{print $0 \" \" {}}".format(trancheid), srcdir + "/" + tranche], stdout=all_source_f)
+	psqlvars = {
+		"source_f" : db_path + "/catsub_patch_source"
+	}
+	call_psql(db_port, psqlfile=BINDIR + "/psql/tin_catsub_patch.pgsql", vars=psqlvars)
+
 
 try:
     database_port = int(sys.argv[1])
@@ -125,13 +121,12 @@ except:
 print(database_port)
 patched, dbpath = check_patched(database_port, "postgres")
 if not patched:
-    print("this database hasn't received the postgres patch, patching now")
-    patch_database_postgres(database_port, dbpath)
+    print("this database has not been patched yet, doing so now!")
+    patch_database(database_port, dbpath)
 
-patched, dbpath = check_patched(database_port, "catsub")
+patched, dbpath = check_patched(database-port, "catsub")
 if not patched:
-    print("this database hasn't received the catsub patch, patching now")
-    patch_database_catsub(database_port, dbpath)
+
 
 chosen_mode = sys.argv[2]
 

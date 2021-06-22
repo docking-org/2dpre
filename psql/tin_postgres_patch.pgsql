@@ -41,14 +41,17 @@ LANGUAGE plpgsql;
 SELECT
     logg ('cloning table schema');
 
+DROP TABLE IF EXISTS substance_t CASCADE;
 CREATE TABLE substance_t (
     LIKE substance INCLUDING defaults
 );
 
+DROP TABLE IF EXISTS catalog_content_t CASCADE;
 CREATE TABLE catalog_content_t (
     LIKE catalog_content INCLUDING defaults
 );
 
+DROP TABLE IF EXISTS catalog_substance_t CASCADE;
 CREATE TABLE catalog_substance_t (
     LIKE catalog_substance INCLUDING defaults
 );
@@ -149,6 +152,7 @@ CREATE SEQUENCE cat_sub_itm_id_seq
     START :cat_tot;
 
 --- update database with tranche information, since multiple tranches may share the same database
+DROP TABLE IF EXISTS tranches;
 CREATE TABLE tranches (
     tranche_id smallint,
     tranche_name varchar
@@ -377,9 +381,10 @@ DROP TABLE catalog_content_trash CASCADE;
 DROP TABLE catalog_substance_trash CASCADE;
 
 SELECT
-    logg ('old tables disposed!')
-    --- rename indexes (so we don't get indexes like %_t_t_t_t or w.e)
-    DO $$
+    logg ('old tables disposed!');
+
+--- rename indexes (so we don't get indexes like %_t_t_t_t or w.e)
+DO $$
 DECLARE
     idx index_save % rowtype;
     cns constraint_save % rowtype;
