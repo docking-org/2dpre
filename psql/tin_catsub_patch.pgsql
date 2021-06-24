@@ -45,14 +45,9 @@ EXPLAIN ANALYZE INSERT INTO query_b (smiles_real, smiles_pot, cat_content_id, su
         cs.sub_id_fk,
         cs.tranche_id
     FROM
-        query_a q,
-        substance sb,
-        catalog_substance cs
-    WHERE
-        cs.cat_content_fk = q.cat_content_id
-        AND sb.sub_id = cs.sub_id_fk
-        AND sb.tranche_id = 1
-        AND cs.tranche_id = 1);
+        query_a q
+    INNER JOIN catalog_substance cs on cs.cat_content_fk = q.cat_content_id
+    INNER JOIN substance sb on sb.sub_id = cs.sub_id_fk);
 
 DROP TABLE query_a;
 
@@ -94,5 +89,16 @@ CREATE INDEX catalog_substance_cat_id_fk_idx_t ON public.catalog_substance_t (ca
 
 ALTER TABLE catalog_substance_t enable TRIGGER ALL;
 
-COMMIT;
+ALTER TABLE catalog_substance rename to catalog_substance_save;
 
+ALTER INDEX catalog_substance_sub_id_fk_idx_t RENAME TO catalog_substance_sub_id_fk_idx;
+
+ALTER INDEX catalog_substance_cat_id_fk_idx_t RENAME TO catalog_substance_cat_id_fk_idx;
+
+ALTER TABLE catalog_substance_t ALTER CONSTRAINT catalog_substance_cat_itm_fk_fkey_t RENAME TO catalog_substance_cat_itm_fk_fkey;
+
+ALTER TABLE catalog_substance_t ALTER CONSTRAINT catalog_substance_sub_id_fk_fkey_t RENAME TO catalog_substance_sub_id_fk_fkey;
+
+ALTER TABLE catalog_substance_t RENAME TO catalog_substance;
+
+COMMIT;
