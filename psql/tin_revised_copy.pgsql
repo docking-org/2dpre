@@ -40,20 +40,29 @@ LANGUAGE plpgsql;
 SELECT
     logg ('cloning table schema');
 
-alter table substance drop column if exists tranche_id;
+ALTER TABLE substance
+    DROP COLUMN IF EXISTS tranche_id;
+
 DROP TABLE IF EXISTS substance_t CASCADE;
+
 CREATE TABLE substance_t (
     LIKE substance INCLUDING defaults
 );
 
-alter table catalog_content drop column if exists tranche_id;
+ALTER TABLE catalog_content
+    DROP COLUMN IF EXISTS tranche_id;
+
 DROP TABLE IF EXISTS catalog_content_t CASCADE;
+
 CREATE TABLE catalog_content_t (
     LIKE catalog_content INCLUDING defaults
 );
 
-alter table catalog_substance drop column if exists tranche_id;
+ALTER TABLE catalog_substance
+    DROP COLUMN IF EXISTS tranche_id;
+
 DROP TABLE IF EXISTS catalog_substance_t CASCADE;
+
 CREATE TABLE catalog_substance_t (
     LIKE catalog_substance INCLUDING defaults
 );
@@ -163,6 +172,10 @@ ALTER TABLE temp_load_cs
 --- create temp sequences for loading
 CREATE TEMPORARY SEQUENCE t_seq_sb;
 
+CREATE TEMPORARY SEQUENCE t_seq_cs;
+
+CREATE TEMPORARY SEQUENCE t_seq_cc;
+
 SELECT
     setval('t_seq_sb', :sb_count);
 
@@ -175,7 +188,7 @@ SELECT
     setval('t_seq_cc', :cc_count);
 
 SELECT
-    logg ('copying in new data...')
+    logg ('copying in new data...');
     ---currval('cat_content_id_seq'));
     --- source_f contains smiles:supplier:cat_id rows, with cat_id being the int describing the catalog the smiles:supplier pair comes from
     COPY temp_load (smiles, code, cat_fk, tranche_id)
@@ -314,7 +327,7 @@ WHERE
     id = NULL;
 
 SELECT
-    logg ('loading new substance data')
+    logg ('loading new substance data');
     --- load new substance data in
     INSERT INTO substance_t (sub_id, smiles, tranche_id)
     SELECT
@@ -458,8 +471,9 @@ ALTER TABLE catalog_substance_t RENAME TO catalog_substance;
 
 SELECT
     logg ('tables swapped out!');
-    --- dispose of old table
-    DROP TABLE substance_trash CASCADE;
+
+--- dispose of old table
+DROP TABLE substance_trash CASCADE;
 
 DROP TABLE catalog_content_trash CASCADE;
 
