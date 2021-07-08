@@ -203,7 +203,6 @@ if chosen_mode == "upload":
 
             f = pre_source.extractfile(member)
             for line in f:
-                line = line.decode('utf-8')
                 psql_source_f.write(' '.join(line.strip().split() + [str(cat_id), str(tranche_id), '\n']))
 
     sys.exit(1)
