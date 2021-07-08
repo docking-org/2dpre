@@ -40,35 +40,29 @@ LANGUAGE plpgsql;
 SELECT
     logg ('cloning table schema');
 
+alter table substance drop column if exists tranche_id;
+DROP TABLE IF EXISTS substance_t CASCADE;
 CREATE TABLE substance_t (
     LIKE substance INCLUDING defaults
 );
 
+alter table catalog_content drop column if exists tranche_id;
+DROP TABLE IF EXISTS catalog_content_t CASCADE;
 CREATE TABLE catalog_content_t (
     LIKE catalog_content INCLUDING defaults
 );
 
+alter table catalog_substance drop column if exists tranche_id;
+DROP TABLE IF EXISTS catalog_substance_t CASCADE;
 CREATE TABLE catalog_substance_t (
     LIKE catalog_substance INCLUDING defaults
 );
 
 ALTER TABLE substance_t
-    ADD PRIMARY KEY (sub_id);
+    ADD PRIMARY KEY (sub_id, tranche_id);
 
 ALTER TABLE catalog_content_t
-    ADD PRIMARY KEY (cat_content_id);
-
-ALTER TABLE catalog_substance_t
-    ADD PRIMARY KEY (cat_sub_itm_id);
-
-SELECT
-    invalidate_index ('substance_t_pkey');
-
-SELECT
-    invalidate_index ('catalog_content_t_pkey');
-
-SELECT
-    invalidate_index ('catalog_substance_t_pkey');
+    ADD PRIMARY KEY (cat_content_id, tranche_id);
 
 --- we are quite sure that the foreign key constraints will stay valid after this update, so we don't need to do any validation
 --- unfortunately creating the constraint anew requires validation of all data currently in the tables, so we do it before loading in data and simply disable triggers, stopping any validation during load time
@@ -80,10 +74,16 @@ ALTER TABLE catalog_content_t
     ADD CONSTRAINT "catalog_content_cat_id_fk_fkey_t" FOREIGN KEY (cat_id_fk) REFERENCES catalog (cat_id) ON DELETE CASCADE;
 
 ALTER TABLE catalog_substance_t
-    ADD CONSTRAINT "catalog_substances_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk) REFERENCES catalog_content_t (cat_content_id) ON DELETE CASCADE;
+    ADD CONSTRAINT "catalog_substance_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk, tranche_id) REFERENCES catalog_content_t (cat_content_id, tranche_id) ON DELETE CASCADE;
 
 ALTER TABLE catalog_substance_t
-    ADD CONSTRAINT "catalog_substances_sub_id_fk_fkey_t" FOREIGN KEY (sub_id_fk) REFERENCES substance_t (sub_id) ON UPDATE CASCADE ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT "catalog_substance_sub_id_fk_fkey_t" FOREIGN KEY (sub_id_fk, tranche_id) REFERENCES substance_t (sub_id, tranche_id) ON UPDATE CASCADE ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+SELECT
+    invalidate_index ('substance_t_pkey');
+
+SELECT
+    invalidate_index ('catalog_content_t_pkey');
 
 ALTER TABLE catalog_content_t DISABLE TRIGGER ALL;
 
@@ -186,9 +186,7 @@ SELECT
     logg ('identifying all unique smiles');
 
 --- load substance data to temp table
-INSERT INTO temp_load_sb (
-    smiles,
-    tranche_id)
+INSERT INTO temp_load_sb (smiles, tranche_id)
 SELECT DISTINCT ON (smiles)
     smiles,
     tranche_id
@@ -200,9 +198,7 @@ SELECT
 
 --- group by makes sure there are no duplicates in this table
 --- load cat_content data to temp table
-INSERT INTO temp_load_cc (
-    code,
-    cat_fk)
+INSERT INTO temp_load_cc (code, cat_fk)
 SELECT DISTINCT ON (code)
     code,
     cat_fk,
@@ -288,9 +284,7 @@ SELECT
     logg ('identifying unique catalog entries');
 
 --- get distinct catalog entries
-INSERT INTO temp_load_cs (
-    sub_fk,
-    code_fk)
+INSERT INTO temp_load_cs (sub_fk, code_fk)
 SELECT DISTINCT ON (sub_fk, code_fk)
     sub_fk,
     code_fk
@@ -322,10 +316,7 @@ WHERE
 SELECT
     logg ('loading new substance data')
     --- load new substance data in
-    INSERT INTO substance_t (
-        sub_id,
-        smiles,
-        tranche_id)
+    INSERT INTO substance_t (sub_id, smiles, tranche_id)
     SELECT
         id,
         smiles,
@@ -341,11 +332,7 @@ SELECT
     logg ('loading new catalog_content data');
 
 --- new cat_content data...
-INSERT INTO catalog_content_t (
-    cat_content_id,
-    supplier_code,
-    cat_id_fk,
-    tranche_id)
+INSERT INTO catalog_content_t (cat_content_id, supplier_code, cat_id_fk, tranche_id)
 SELECT
     id,
     code,
@@ -360,10 +347,7 @@ SELECT
     logg ('loading new catalog_substance data');
 
 --- and finally, cat_substance data
-INSERT INTO catalog_substance_t (
-    cat_content_fk,
-    sub_id_fk,
-    cat_sub_itm_id)
+INSERT INTO catalog_substance_t (cat_content_fk, sub_id_fk, cat_sub_itm_id)
 SELECT
     code_fk,
     smiles_fk,
@@ -413,33 +397,16 @@ CREATE TEMPORARY TABLE pkey_save (
 );
 
 --- initialize record of constraints, just for renaming them after we're done
-INSERT INTO constraint_save (
-    tablename,
-    constraintname) (
-    VALUES (
-            'catalog_content', 'catalog_content_cat_id_fk_fkey'),
-        (
-            'catalog_substance', 'catalog_substance_cat_itm_fk_fkey'),
-        (
-            'catalog_substance', 'catalog_substance_sub_id_fk_fkey'));
+INSERT INTO constraint_save (tablename, constraintname) (
+        VALUES ('catalog_content', 'catalog_content_cat_id_fk_fkey'), ('catalog_substance', 'catalog_substance_cat_itm_fk_fkey'), ('catalog_substance', 'catalog_substance_sub_id_fk_fkey'));
 
 --- keep a record of the pkeys so that we can rename them afterwards
-INSERT INTO pkey_save (
-    tablename,
-    columnname) (
-    VALUES (
-            'substance', 'sub_id'),
-        (
-            'catalog_content', 'cat_content_id'),
-        (
-            'catalog_substance', 'cat_sub_itm_id'));
+INSERT INTO pkey_save (tablename, columnname) (
+        VALUES ('substance', 'sub_id'), ('catalog_content', 'cat_content_id'), ('catalog_substance', 'cat_sub_itm_id'));
 
 --- initialize our record of indexes we need to rebuild
 --- also used for renaming them afterwards
-INSERT INTO index_save (
-    tablename,
-    indexname,
-    indexdef)
+INSERT INTO index_save (tablename, indexname, indexdef)
 SELECT
     tablename,
     indexname,
@@ -453,16 +420,8 @@ WHERE
 DO $$
 DECLARE
     idx index_save % rowtype;
-    cns constraint_save % rowtype;
-    pky pkey_save % rowtype;
     idxdef text;
 BEGIN
-    --- rebuild the primary key indexes we invalidated earlier
-    RAISE info '[%]: building primary key indexes...', clock_timestamp(), idx.indexname;
-    REINDEX TABLE substance_t;
-    REINDEX TABLE catalog_content_t;
-    REINDEX TABLE catalog_substance_t;
-    --- generate normal indexes
     FOR idx IN
     SELECT
         *
@@ -473,24 +432,49 @@ BEGIN
             EXECUTE '' || idxdef;
             RAISE info '[%]: finished building index: %', clock_timestamp(), idx.indexname;
         END LOOP;
-    --- re-enable triggers. We could have done this earlier if we wanted
-    ALTER TABLE substance ENABLE TRIGGER ALL;
-    ALTER TABLE catalog_content ENABLE TRIGGER ALL;
-    ALTER TABLE catalog_substance ENABLE TRIGGER ALL;
-    --- swap out old table for new table
-    ALTER TABLE substance RENAME TO substance_trash;
-    ALTER TABLE catalog_content RENAME TO catalog_content_trash;
-    ALTER TABLE catalog_substance RENAME TO catalog_substance_trash;
-    ALTER TABLE substance_t RENAME TO substance;
-    ALTER TABLE catalog_content_t RENAME TO catalog_content;
-    ALTER TABLE catalog_substance_t RENAME TO catalog_substance;
-    RAISE info '[%]: tables swapped out!', clock_timestamp();
+END
+$$
+LANGUAGE plpgsql;
+
+--- re-enable triggers. We could have done this earlier if we wanted
+ALTER TABLE substance_t ENABLE TRIGGER ALL;
+
+ALTER TABLE catalog_content_t ENABLE TRIGGER ALL;
+
+ALTER TABLE catalog_substance_t ENABLE TRIGGER ALL;
+
+--- swap out old table for new table
+ALTER TABLE substance RENAME TO substance_trash;
+
+ALTER TABLE catalog_content RENAME TO catalog_content_trash;
+
+ALTER TABLE catalog_substance RENAME TO catalog_substance_trash;
+
+ALTER TABLE substance_t RENAME TO substance;
+
+ALTER TABLE catalog_content_t RENAME TO catalog_content;
+
+ALTER TABLE catalog_substance_t RENAME TO catalog_substance;
+
+SELECT
+    logg ('tables swapped out!');
     --- dispose of old table
     DROP TABLE substance_trash CASCADE;
-    DROP TABLE catalog_content_trash CASCADE;
-    DROP TABLE catalog_substance_trash CASCADE;
-    RAISE info '[%]: old table disposed!', clock_timestamp();
-    --- rename indexes (so we don't get indexes like %_t_t_t_t or w.e)
+
+DROP TABLE catalog_content_trash CASCADE;
+
+DROP TABLE catalog_substance_trash CASCADE;
+
+SELECT
+    logg ('old tables disposed!');
+
+--- rename indexes (so we don't get indexes like %_t_t_t_t or w.e)
+DO $$
+DECLARE
+    idx index_save % rowtype;
+    cns constraint_save % rowtype;
+    pky pkey_save % rowtype;
+BEGIN
     FOR idx IN
     SELECT
         *
@@ -512,7 +496,7 @@ BEGIN
         *
     FROM
         constraint_save LOOP
-            EXECUTE 'alter table ' || cns.tablename || 'rename constraint ' || cns.constraintname || '_t to ' || cns.constraintname;
+            EXECUTE 'alter table ' || cns.tablename || ' rename constraint ' || cns.constraintname || '_t to ' || cns.constraintname;
         END LOOP;
     RAISE info '[%]: finished renaming constraints & indexes!', clock_timestamp();
 END
