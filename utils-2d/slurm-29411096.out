@@ -1,0 +1,199 @@
+start: Thu Jun 24 12:53:00 PDT 2021
+BEGIN
+CREATE FUNCTION
+CREATE FUNCTION
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:41: INFO:  [2021-06-24 13:12:05.936212-07]: cloning table schema
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:43: NOTICE:  table "substance_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:48: NOTICE:  table "catalog_content_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:53: NOTICE:  table "catalog_substance_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+invalidate_index
+0
+invalidate_index
+0
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:105: INFO:  [2021-06-24 13:12:06.79573-07]: copying substance data to clone table...
+logg
+0
+INSERT 0 199605049
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:114: INFO:  [2021-06-24 17:09:53.823934-07]: copying catalog_content data to clone table...
+logg
+0
+INSERT 0 123966771
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:123: INFO:  [2021-06-24 17:46:35.980192-07]: copying catalog_substance data to clone table
+logg
+0
+INSERT 0 238692284
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:138: NOTICE:  sequence "sub_id_seq" does not exist, skipping
+DROP SEQUENCE
+CREATE SEQUENCE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:143: NOTICE:  sequence "cat_content_id_seq" does not exist, skipping
+DROP SEQUENCE
+CREATE SEQUENCE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:148: NOTICE:  sequence "cat_sub_itm_id_seq" does not exist, skipping
+DROP SEQUENCE
+CREATE SEQUENCE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:154: NOTICE:  table "tranches" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+COPY 3
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+COPY 199605049
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:185: INFO:  [2021-06-24 18:47:28.461274-07]: loaded sub data
+logg
+0
+COPY 123966771
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:192: INFO:  [2021-06-24 18:51:38.747495-07]: loaded cat content data
+logg
+0
+COPY 256782792
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:211: INFO:  [2021-06-24 19:00:42.673429-07]: starting update on substance table
+logg
+0
+UPDATE 199605049
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:223: INFO:  [2021-06-25 06:55:11.753486-07]: finished update on substance table
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:226: INFO:  [2021-06-25 06:55:11.756592-07]: starting update on cat content table
+logg
+0
+UPDATE 123966771
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:238: INFO:  [2021-06-25 08:27:40.754736-07]: finished update on cat content table
+logg
+0
+UPDATE 238692284
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:250: INFO:  [2021-06-25 11:16:27.106739-07]: finished update on cat substance table
+logg
+0
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+INSERT 0 2
+INSERT 0 3
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:326: INFO:  [2021-06-25 11:16:28.552969-07]: building primary key indexes...
+logg
+0
+REINDEX
+REINDEX
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:351: INFO:  [2021-06-25 14:06:35.067913-07]: finished building index: catalog_content_supplier_code_idx
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:351: INFO:  [2021-06-25 14:28:44.741487-07]: finished building index: catalog_substance_sub_id_fk_idx
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:351: INFO:  [2021-06-25 14:49:39.21128-07]: finished building index: catalog_substance_cat_id_fk_idx
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:374: INFO:  [2021-06-25 14:49:39.278403-07]: tables swapped out!
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:376: NOTICE:  drop cascades to constraint catalog_substances_sub_id_fk_fkey on table catalog_substance_trash
+DROP TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:378: NOTICE:  drop cascades to constraint catalog_substances_cat_itm_fk_fkey on table catalog_substance_trash
+DROP TABLE
+DROP TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:383: INFO:  [2021-06-25 14:49:40.748092-07]: old tables disposed!
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:418: INFO:  [2021-06-25 14:49:40.97682-07]: finished renaming constraints & indexes!
+DO
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:421: INFO:  [2021-06-25 14:49:40.97709-07]: cleaning up...
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:424: INFO:  [2021-06-25 14:49:40.977237-07]: done with everything!
+logg
+0
+COMMIT
+VACUUM
+ANALYZE
+BEGIN
+CREATE TABLE
+COPY 279824320
+UPDATE 716996
+UPDATE 279784563
+CREATE TABLE
+QUERY PLAN
+Insert on query_b  (cost=129980824.46..743598661.13 rows=17915551179 width=74) (actual time=191589280.260..191589280.260 rows=0 loops=1)
+  ->  Hash Join  (cost=129980824.46..743598661.13 rows=17915551179 width=74) (actual time=12668191.640..179918304.773 rows=618195154 loops=1)
+        Hash Cond: (q.cat_content_id = cs.cat_content_fk)
+        ->  Seq Scan on query_a q  (cost=0.00..15973835.76 rows=724496376 width=36) (actual time=357.630..2031519.365 rows=279824320 loops=1)
+        ->  Hash  (cost=115449621.66..115449621.66 rows=236941904 width=369) (actual time=12665904.047..12665904.047 rows=238692284 loops=1)
+              Buckets: 131072  Batches: 4096  Memory Usage: 23840kB
+              ->  Hash Join  (cost=10229705.84..115449621.66 rows=236941904 width=369) (actual time=1034798.622..11009149.735 rows=238692284 loops=1)
+                    Hash Cond: (sb.sub_id = cs.sub_id_fk)
+                    ->  Seq Scan on substance sb  (cost=0.00..23352860.92 rows=199004592 width=359) (actual time=566.558..5506399.397 rows=199605049 loops=1)
+                    ->  Hash  (cost=5879600.04..5879600.04 rows=236941904 width=18) (actual time=970099.651..970099.654 rows=238692284 loops=1)
+                          Buckets: 524288  Batches: 512  Memory Usage: 26860kB
+                          ->  Seq Scan on catalog_substance cs  (cost=0.00..5879600.04 rows=236941904 width=18) (actual time=152611.643..867076.876 rows=238692284 loops=1)
+Planning Time: 1221.588 ms
+Execution Time: 191589299.585 ms
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+INSERT 0 238692284
+DELETE 109613090
+CREATE INDEX
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:88: ERROR:  could not extend file "base/16384/64279.5": wrote only 4096 of 8192 bytes at block 659437
+HINT:  Check free disk space.
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:90: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:92: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:94: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:96: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:98: ERROR:  syntax error at or near "RENAME"
+LINE 1: ...ER CONSTRAINT catalog_substance_cat_itm_fk_fkey_t RENAME TO ...
+                                                             ^
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:100: ERROR:  syntax error at or near "RENAME"
+LINE 1: ...TER CONSTRAINT catalog_substance_sub_id_fk_fkey_t RENAME TO ...
+                                                             ^
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:102: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK
+5436
+this database hasn't received the postgres patch, patching now
+5436 /local2/load/H25P200_H25P220
+.len_catalog
+.len_substance
+.len_supplier
+.stage
+.tmp
+H25P200
+H25P210
+H25P220
+{'tranche_sub_id_f': '/local2/load/H25P200_H25P220/sub_id_tranche_id', 'tranche_cc_id_f': '/local2/load/H25P200_H25P220/cc_id_tranche_id', 'tranche_cs_id_f': '/local2/load/H25P200_H25P220/cs_id_tranche_id', 'tranche_info_f': '/local2/load/H25P200_H25P220/tranche_info', 'sub_tot': 199605049, 'sup_tot': 123966771, 'cat_tot': 256782792}
+this database hasn't received the catsub patch, patching now
+H25P200
+H25P210
+H25P220
+Traceback (most recent call last):
+  File "/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../2dload_new.py", line 140, in <module>
+    chosen_mode = sys.argv[2]
+IndexError: list index out of range
+end: Tue Jun 29 08:01:56 PDT 2021

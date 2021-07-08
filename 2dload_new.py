@@ -23,14 +23,33 @@ def call_psql(db_port, cmd=None, psqlfile=None, vars={}, getdata=False, rethandl
         psql += ["-c", cmd]
 
     if getdata:
-        with subprocess.Popen(psql, stdout=subprocess.PIPE) as psql_p:
-            data = [r.split(",") for r in psql_p.stdout.readlines()]
-            return data
+        data = []
+        code = 0
+        psql_p = subprocess.Popen(psql, stdout=subprocess.PIPE)
+        for line in psql_p.stdout:
+            line = line.decode('utf-8')
+            data += [line.strip().split(",")]
+            print(line.strip())
+            if "ROLLBACK" in line:
+                code = 1
+        ecode = psql_p.wait()
+        if code == 0 and not ecode == code:
+            code = ecode
+        return data, code
     elif rethandle:
         return subprocess.Popen(psql, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
-        subprocess.call(psql)
-        return None
+        code = 0
+        p = subprocess.Popen(psql, stdout=subprocess.PIPE)
+        for line in p.stdout:
+            line = line.decode('utf-8')
+            print(line.strip())
+            if "ROLLBACK" in line:
+                code = 1
+        ecode = p.wait()
+        if code == 0 and not ecode == code:
+            code = ecode
+        return code
 
 def check_patched(db_port, patchtype):
     srcdir = "/local2/load"
@@ -74,6 +93,10 @@ def patch_database_postgres(db_port, db_path):
 
         tranche_id += 1
 
+    tranche_info.close()
+    sub_id_annotated.close()
+    cc_id_annotated.close()
+    cs_id_annotated.close()
     sub_tot = sup_tot = cat_tot = 0
     with open(db_path + "/src/.len_substance") as sub_tot_f:
         sub_tot = int(sub_tot_f.read())
@@ -93,12 +116,13 @@ def patch_database_postgres(db_port, db_path):
     }
     print(psqlvars)
 
-    call_psql(db_port, psqlfile=BINDIR + "/psql/tin_postgres_patch.pgsql", vars=psqlvars)
-    with open(db_path + "/.patchedpostgres", 'w') as patchmarker:
-        patchmarker.write("patched!")
+    code = call_psql(db_port, psqlfile=BINDIR + "/psql/tin_postgres_patch.pgsql", vars=psqlvars)
+    if code == 0:
+        with open(db_path + "/.patchedpostgres", 'w') as patchmarker:
+            patchmarker.write("patched!")
 
 
-database_source_dirs_prepatch = ['/nfs/exb/zinc22/2dpre_results/mx', '/nfs/exb/zinc22/2dpre_results/mu', '/nfs/exb/zinc22/2dpre_results/m', '/nfs/exb/zinc22/2dpre_results/s', '/nfs/exb/zinc22/2dpre_results/ma', '/nfs/exb/zinc22/2dpre_results/sx', '/nfs/exb/zinc22/2dpre_results/su', '/nfs/exb/zinc22/2dpre_results/wuxi', '/nfs/exb/zinc22/2dpre_results/sc', '/nfs/exb/zinc22/2dpre_results/my', '/nfs/exb/zinc22/2dpre_results/mc', '/nfs/exb/zinc22/2dpre_results/mcule', '/nfs/exb/zinc22/2dpre_results/sy']
+database_source_dirs_prepatch = ['/nfs/exb/zinc22/2dpre_results/mx', '/nfs/exb/zinc22/2dpre_results/mu', '/nfs/exb/zinc22/2dpre_results/m', '/nfs/exb/zinc22/2dpre_results/s', '/nfs/exb/zinc22/2dpre_results/ma', '/nfs/exb/zinc22/2dpre_results/sx', '/nfs/exb/zinc22/2dpre_results/su', '/nfs/exb/zinc22/2dpre_results/wuxi', '/nfs/exb/zinc22/2dpre_results/sc', '/nfs/exb/zinc22/2dpre_results/my', '/nfs/exb/zinc22/2dpre_results/mc', '/nfs/exb/zinc22/2dpre_results/mcule', '/nfs/exb/zinc22/2dpre_results/sy', '/nfs/exb/zinc22/2dpre_results/zinc20-stock']
 def patch_database_catsub(db_port, db_path):
     all_source_f = open(db_path + "/catsub_patch_source", 'w')
     trancheid = 1
@@ -107,14 +131,16 @@ def patch_database_catsub(db_port, db_path):
             continue
         print(tranche)
         for srcdir in database_source_dirs_prepatch:
-            subprocess.call(["awk", "-v", "a={}".format(trancheid), "{print $0 \"\\t\" a}", srcdir + "/" + tranche], stdout=all_source_f)
+            if os.path.isfile(srcdir + "/" + tranche):
+                subprocess.call(["awk", "-v", "a={}".format(trancheid), "{print $0 \"\\t\" a}", srcdir + "/" + tranche], stdout=all_source_f)
         trancheid += 1
     psqlvars = {
         "source_f" : db_path + "/catsub_patch_source"
     }
-    call_psql(db_port, psqlfile=BINDIR + "/psql/tin_catsub_patch.pgsql", vars=psqlvars)
-    with open(db_path + "/.patchedcatsub", 'w') as patchmarker:
-        patchmarker.write("patched!")
+    code = call_psql(db_port, psqlfile=BINDIR + "/psql/tin_catsub_patch.pgsql", vars=psqlvars)
+    if code == 0:
+        with open(db_path + "/.patchedcatsub", 'w') as patchmarker:
+            patchmarker.write("patched!")
 
 try:
     database_port = int(sys.argv[1])

@@ -51,6 +51,7 @@ EXPLAIN ANALYZE INSERT INTO query_b (smiles_real, smiles_pot, cat_content_id, su
 
 DROP TABLE query_a;
 
+drop table if exists catalog_substance_t cascade;
 CREATE TABLE catalog_substance_t (
     LIKE catalog_substance INCLUDING defaults
 );
@@ -83,21 +84,27 @@ WHERE (cat_content_fk, sub_id_fk)
             cat_content_id,
             sub_id);
 
+drop index if exists catalog_substance_sub_id_fk_idx_t;
 CREATE INDEX catalog_substance_sub_id_fk_idx_t ON public.catalog_substance_t (sub_id_fk, tranche_id);
 
+drop index if exists catalog_substance_cat_id_fk_idx_t;
 CREATE INDEX catalog_substance_cat_id_fk_idx_t ON public.catalog_substance_t (cat_content_fk, tranche_id);
 
 ALTER TABLE catalog_substance_t enable TRIGGER ALL;
 
 ALTER TABLE catalog_substance rename to catalog_substance_save;
+drop index if exists catalog_substance_sub_id_fk_idx;
+drop index if exists catalog_substance_cat_id_fk_idx;
+alter table catalog_substance_save drop constraint catalog_substance_cat_itm_fk_fkey;
+alter table catalog_substance_save drop constraint catalog_substance_sub_id_fk_fkey;
 
 ALTER INDEX catalog_substance_sub_id_fk_idx_t RENAME TO catalog_substance_sub_id_fk_idx;
 
 ALTER INDEX catalog_substance_cat_id_fk_idx_t RENAME TO catalog_substance_cat_id_fk_idx;
 
-ALTER TABLE catalog_substance_t ALTER CONSTRAINT catalog_substance_cat_itm_fk_fkey_t RENAME TO catalog_substance_cat_itm_fk_fkey;
+ALTER TABLE catalog_substance_t RENAME CONSTRAINT catalog_substance_cat_itm_fk_fkey_t TO catalog_substance_cat_itm_fk_fkey;
 
-ALTER TABLE catalog_substance_t ALTER CONSTRAINT catalog_substance_sub_id_fk_fkey_t RENAME TO catalog_substance_sub_id_fk_fkey;
+ALTER TABLE catalog_substance_t RENAME CONSTRAINT catalog_substance_sub_id_fk_fkey_t TO catalog_substance_sub_id_fk_fkey;
 
 ALTER TABLE catalog_substance_t RENAME TO catalog_substance;
 

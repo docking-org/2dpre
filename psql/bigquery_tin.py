@@ -102,6 +102,19 @@ def big_zincid_query(zinc_ids, dsn):
                 AND cs.tranche_id = q.tranche_id)")
 
     curs.execute(
+        "SELECT\
+            temp_query_b.sub_id_fk,\
+            temp_query_b.cat_content_fk,\
+            temp_query_b.tranche_id,\
+            substance.smiles,\
+            catalog_content.supplier_code\
+         FROM\
+            temp_query_b\
+            INNER JOIN substance ON temp_query_b.sub_id_fk = substance.sub_id\
+            INNER JOIN catalog_content ON catalog_content.cat_content_id = temp_query_b.cat_content_fk")
+    # old inefficient method
+"""
+    curs.execute(
         "UPDATE\
             temp_query_b q\
         SET\
@@ -122,16 +135,16 @@ def big_zincid_query(zinc_ids, dsn):
         WHERE\
             cc.cat_content_id = q.cat_content_fk\
             AND cc.tranche_id = q.tranche_id")
+"""
 
     results = []
-    curs.execute("select * from temp_query_b")
     for result in curs.fetchall():
 
         #data = result.json()  
-        smiles = result[2]
-        scode  = result[3]
+        smiles = result[3]
+        scode  = result[4]
         sub_id = result[0]
-        tranche = tranchenamemap[result[4]]
+        tranche = tranchenamemap[result[2]]
         # get zinc id back from sub_id + tranche and append to results with smiles
         zincid = encode_zincid(sub_id, tranche)
         results.append((zincid, smiles, scode))

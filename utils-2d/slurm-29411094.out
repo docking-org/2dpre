@@ -1,0 +1,215 @@
+start: Thu Jun 24 12:52:39 PDT 2021
+BEGIN
+CREATE FUNCTION
+CREATE FUNCTION
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:41: INFO:  [2021-06-24 13:30:22.39822-07]: cloning table schema
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:43: NOTICE:  table "substance_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:48: NOTICE:  table "catalog_content_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:53: NOTICE:  table "catalog_substance_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+invalidate_index
+0
+invalidate_index
+0
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:105: INFO:  [2021-06-24 13:30:24.404967-07]: copying substance data to clone table...
+logg
+0
+INSERT 0 338516132
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:114: INFO:  [2021-06-24 20:13:46.428195-07]: copying catalog_content data to clone table...
+logg
+0
+INSERT 0 214380270
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:123: INFO:  [2021-06-24 21:23:54.966598-07]: copying catalog_substance data to clone table
+logg
+0
+INSERT 0 435655221
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:138: NOTICE:  sequence "sub_id_seq" does not exist, skipping
+DROP SEQUENCE
+CREATE SEQUENCE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:143: NOTICE:  sequence "cat_content_id_seq" does not exist, skipping
+DROP SEQUENCE
+CREATE SEQUENCE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:148: NOTICE:  sequence "cat_sub_itm_id_seq" does not exist, skipping
+DROP SEQUENCE
+CREATE SEQUENCE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:154: NOTICE:  table "tranches" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+COPY 17
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+COPY 340998952
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:185: INFO:  [2021-06-24 23:03:15.217989-07]: loaded sub data
+logg
+0
+COPY 216126393
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:192: INFO:  [2021-06-24 23:08:46.534227-07]: loaded cat content data
+logg
+0
+COPY 439151540
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:211: INFO:  [2021-06-24 23:23:53.885251-07]: starting update on substance table
+logg
+0
+UPDATE 144190232
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:223: INFO:  [2021-06-25 15:55:12.455586-07]: finished update on substance table
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:226: INFO:  [2021-06-25 15:55:12.457416-07]: starting update on cat content table
+logg
+0
+UPDATE 68840756
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:238: INFO:  [2021-06-25 17:15:06.170453-07]: finished update on cat content table
+logg
+0
+UPDATE 157313851
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:250: INFO:  [2021-06-25 20:07:13.424279-07]: finished update on cat substance table
+logg
+0
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+INSERT 0 2
+INSERT 0 3
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:326: INFO:  [2021-06-25 20:07:15.251439-07]: building primary key indexes...
+logg
+0
+REINDEX
+REINDEX
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:351: INFO:  [2021-06-25 23:01:07.294722-07]: finished building index: catalog_content_supplier_code_idx
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:351: INFO:  [2021-06-25 23:28:59.672495-07]: finished building index: catalog_substance_sub_id_fk_idx
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:351: INFO:  [2021-06-26 00:04:22.788589-07]: finished building index: catalog_substance_cat_id_fk_idx
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:374: INFO:  [2021-06-26 00:04:23.201556-07]: tables swapped out!
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:376: NOTICE:  drop cascades to constraint catalog_substances_sub_id_fk_fkey on table catalog_substance_trash
+DROP TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:378: NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to view catalog_item
+drop cascades to constraint catalog_substances_cat_itm_fk_fkey on table catalog_substance_trash
+DROP TABLE
+DROP TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:383: INFO:  [2021-06-26 00:04:24.580169-07]: old tables disposed!
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:418: INFO:  [2021-06-26 00:04:24.609681-07]: finished renaming constraints & indexes!
+DO
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:421: INFO:  [2021-06-26 00:04:24.609847-07]: cleaning up...
+logg
+0
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_postgres_patch.pgsql:424: INFO:  [2021-06-26 00:04:24.609968-07]: done with everything!
+logg
+0
+COMMIT
+VACUUM
+ANALYZE
+BEGIN
+CREATE TABLE
+COPY 490820287
+UPDATE 1365268
+UPDATE 214858018
+CREATE TABLE
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:50: ERROR:  could not extend file "base/16384/t3_69506.44": No space left on device
+HINT:  Check free disk space.
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:52: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:56: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:59: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:62: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:64: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:70: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:84: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:86: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:88: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:90: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:92: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:94: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:96: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:98: ERROR:  syntax error at or near "RENAME"
+LINE 1: ...ER CONSTRAINT catalog_substance_cat_itm_fk_fkey_t RENAME TO ...
+                                                             ^
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:100: ERROR:  syntax error at or near "RENAME"
+LINE 1: ...TER CONSTRAINT catalog_substance_sub_id_fk_fkey_t RENAME TO ...
+                                                             ^
+psql:/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../psql/tin_catsub_patch.pgsql:102: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK
+5435
+this database hasn't received the postgres patch, patching now
+5435 /local2/load/H24M500_H24P100
+.len_catalog
+.len_substance
+.len_supplier
+.stage
+.tmp
+H24M000
+H24M100
+H24M200
+H24M300
+H24M400
+H24M500
+H24P000
+H24P010
+H24P020
+H24P030
+H24P040
+H24P050
+H24P060
+H24P070
+H24P080
+H24P090
+H24P100
+{'tranche_sub_id_f': '/local2/load/H24M500_H24P100/sub_id_tranche_id', 'tranche_cc_id_f': '/local2/load/H24M500_H24P100/cc_id_tranche_id', 'tranche_cs_id_f': '/local2/load/H24M500_H24P100/cs_id_tranche_id', 'tranche_info_f': '/local2/load/H24M500_H24P100/tranche_info', 'sub_tot': 535324852, 'sup_tot': 366718367, 'cat_tot': 730039769}
+this database hasn't received the catsub patch, patching now
+H24M000
+H24M100
+H24M200
+H24M300
+H24M400
+H24M500
+H24P000
+H24P010
+H24P020
+H24P030
+H24P040
+H24P050
+H24P060
+H24P070
+H24P080
+H24P090
+H24P100
+Traceback (most recent call last):
+  File "/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/./../2dload_new.py", line 140, in <module>
+    chosen_mode = sys.argv[2]
+IndexError: list index out of range
+end: Tue Jun 29 08:02:46 PDT 2021
