@@ -142,13 +142,20 @@ def patch_database_catsub(db_port, db_path):
     os.remove(db_path + "/catsub_patch_source")
 
 if len(sys.argv) == 1:
-    print("usage: 2dload_new.py [port] upload [source_f.pre] [catalog_shortname]")
+    print("usages:")
+    print("2dload_new.py [port] upload [source_f.pre] [catalog_shortname]")
     print("       ----> uploads source_f.pre to database @ port")
     print("       ----> example:")
     print("       ----> 2dload_new.py 5434 upload /nfs/exb/zinc22/2dpre_results/s/34.pre s")
     print()
-    print("       2dload_new.py [port]")
+    print("2dload_new.py [port]")
     print("       ----> applies pending patches to database @ port without doing anything else")
+    print()
+    print("2dload_new.py [port] deplete [true/false] {file=[file.pre] | catalog=[short_name]}")
+    print("       ----> depletes a given catalog or supplier code sample")
+    print("       ----> example:")
+    print("       ----> 2dload_new.py 5434 deplete true file=/nfs/exb/zinc22/2dpre_results/zinc20-stock/37.pre")
+    print("       ----> 2dload_new.py 5434 deplete true catalog=zinc20-stock")
     sys.exit(0)
 
 try:
@@ -229,7 +236,7 @@ if chosen_mode == "deplete":
     dtype, dval = src.split("=")
 
     if dtype == "catalog":
-        data_catid = call_psql(database_port, cmd="select cat_id from catalog where shortname = '{}'".format(dval), getdata=True)
+        data_catid = call_psql(database_port, cmd="select cat_id from catalog where short_name = '{}'".format(dval), getdata=True)
         cat_id = int(data_catid[1][0])
 
         psqlvars= {
@@ -252,15 +259,15 @@ if chosen_mode == "deplete":
             "depleted_bool" : boolval
         }
 
-        psqlvars["source_f"] = (os.environ.get("TEMPDIR") or "/local2/load") + "/" + str(database_port) + "_" + cat_shortname + "_deplete.txt"
+        psqlvars["source_f"] = (os.environ.get("TEMPDIR") or "/local2/load") + "/" + str(database_port) + "_deplete.txt"
 
         deplete_src = open(psqlvars["source_f"], 'w')
 
-        with tarfile.open(source_f, mode='r:*') as pre_source:
+        with tarfile.open(dval, mode='r:*') as pre_source:
             for member in pre_source:
                 with pre_source.extractfile(member) as f:
                     for line in f:
-                        tokens = line.strip().split()
+                        tokens = line.decode('utf-8').strip().split()
                         deplete_src.write(tokens[1] + "\n")
         
         deplete_src.close()

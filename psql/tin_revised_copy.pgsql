@@ -62,7 +62,7 @@ ALTER TABLE substance_t
     ADD PRIMARY KEY (sub_id, tranche_id);
 
 ALTER TABLE catalog_content_t
-    ADD PRIMARY KEY (cat_content_id, tranche_id);
+    ADD PRIMARY KEY (cat_content_id);
 
 --- we are quite sure that the foreign key constraints will stay valid after this update, so we don't need to do any validation
 --- unfortunately creating the constraint anew requires validation of all data currently in the tables, so we do it before loading in data and simply disable triggers, stopping any validation during load time
@@ -74,7 +74,7 @@ ALTER TABLE catalog_content_t
     ADD CONSTRAINT "catalog_content_cat_id_fk_fkey_t" FOREIGN KEY (cat_id_fk) REFERENCES catalog (cat_id) ON DELETE CASCADE;
 
 ALTER TABLE catalog_substance_t
-    ADD CONSTRAINT "catalog_substance_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk, tranche_id) REFERENCES catalog_content_t (cat_content_id, tranche_id) ON DELETE CASCADE;
+    ADD CONSTRAINT "catalog_substance_cat_itm_fk_fkey_t" FOREIGN KEY (cat_content_fk) REFERENCES catalog_content_t (cat_content_id) ON DELETE CASCADE;
 
 ALTER TABLE catalog_substance_t
     ADD CONSTRAINT "catalog_substance_sub_id_fk_fkey_t" FOREIGN KEY (sub_id_fk, tranche_id) REFERENCES substance_t (sub_id, tranche_id) ON UPDATE CASCADE ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
