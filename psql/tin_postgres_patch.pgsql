@@ -40,19 +40,16 @@ LANGUAGE plpgsql;
 SELECT
     logg ('cloning table schema');
 
-alter table substance drop column if exists tranche_id;
 DROP TABLE IF EXISTS substance_t CASCADE;
 CREATE TABLE substance_t (
     LIKE substance INCLUDING defaults
 );
 
-alter table catalog_content drop column if exists tranche_id;
 DROP TABLE IF EXISTS catalog_content_t CASCADE;
 CREATE TABLE catalog_content_t (
     LIKE catalog_content INCLUDING defaults
 );
 
-alter table catalog_substance drop column if exists tranche_id;
 DROP TABLE IF EXISTS catalog_substance_t CASCADE;
 CREATE TABLE catalog_substance_t (
     LIKE catalog_substance INCLUDING defaults
@@ -61,13 +58,13 @@ CREATE TABLE catalog_substance_t (
 
 /* this bit is not boilerplate */
 ALTER TABLE substance_t
-    ADD COLUMN tranche_id smallint DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS tranche_id smallint DEFAULT 0;
 
 ALTER TABLE catalog_content_t
-    ADD COLUMN tranche_id smallint DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS tranche_id smallint DEFAULT 0;
 
 ALTER TABLE catalog_substance_t
-    ADD COLUMN tranche_id smallint DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS tranche_id smallint DEFAULT 0;
 
 
 /* end not boilerplate bit */

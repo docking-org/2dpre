@@ -5,11 +5,6 @@ import tarfile
 
 BINDIR = os.path.dirname(sys.argv[0]) or '.'
 
-modes = [
-    "upload",
-    "export",
-    "wipe"
-]
 
 def call_psql(db_port, cmd=None, psqlfile=None, vars={}, getdata=False, rethandle=False):
     psql = ["psql", "-p", str(db_port), "-d", "tin", "-U", "tinuser", "--csv"]
@@ -120,7 +115,9 @@ def patch_database_postgres(db_port, db_path):
     if code == 0:
         with open(db_path + "/.patchedpostgres", 'w') as patchmarker:
             patchmarker.write("patched!")
-
+    os.remove(db_path + "/sub_id_tranche_id")
+    os.remove(db_path + "/cc_id_tranche_id")
+    os.remove(db_path + "/cs_id_tranche_id")
 
 database_source_dirs_prepatch = ['/nfs/exb/zinc22/2dpre_results/mx', '/nfs/exb/zinc22/2dpre_results/mu', '/nfs/exb/zinc22/2dpre_results/m', '/nfs/exb/zinc22/2dpre_results/s', '/nfs/exb/zinc22/2dpre_results/ma', '/nfs/exb/zinc22/2dpre_results/sx', '/nfs/exb/zinc22/2dpre_results/su', '/nfs/exb/zinc22/2dpre_results/wuxi', '/nfs/exb/zinc22/2dpre_results/sc', '/nfs/exb/zinc22/2dpre_results/my', '/nfs/exb/zinc22/2dpre_results/mc', '/nfs/exb/zinc22/2dpre_results/mcule', '/nfs/exb/zinc22/2dpre_results/sy', '/nfs/exb/zinc22/2dpre_results/zinc20-stock']
 def patch_database_catsub(db_port, db_path):
@@ -137,10 +134,22 @@ def patch_database_catsub(db_port, db_path):
     psqlvars = {
         "source_f" : db_path + "/catsub_patch_source"
     }
-    code = call_psql(db_port, psqlfile=BINDIR + "/psql/tin_catsub_patch.pgsql", vars=psqlvars)
+    all_source_f.close()
+    code = call_psql(db_port, psqlfile=BINDIR + "/psql/tin_catsub_patch_rev.pgsql", vars=psqlvars)
     if code == 0:
-        with open(db_path + "/.patchedcatsub", 'w') as patchmarker:
+        with open(db_path + "/.patchedcatsub2", 'w') as patchmarker:
             patchmarker.write("patched!")
+    os.remove(db_path + "/catsub_patch_source")
+
+if len(sys.argv) == 1:
+    print("usage: 2dload_new.py [port] upload [source_f.pre] [catalog_shortname]")
+    print("       ----> uploads source_f.pre to database @ port")
+    print("       ----> example:")
+    print("       ----> 2dload_new.py 5434 upload /nfs/exb/zinc22/2dpre_results/s/34.pre s")
+    print()
+    print("       2dload_new.py [port]")
+    print("       ----> applies pending patches to database @ port without doing anything else")
+    sys.exit(0)
 
 try:
     database_port = int(sys.argv[1])
@@ -154,12 +163,12 @@ if not patched:
     print("this database hasn't received the postgres patch, patching now")
     patch_database_postgres(database_port, dbpath)
 
-patched, dbpath = check_patched(database_port, "catsub")
+patched, dbpath = check_patched(database_port, "catsub2")
 if not patched:
-    print("this database hasn't received the catsub patch, patching now")
+    print("this database hasn't received the catsub 2 patch, patching now")
     patch_database_catsub(database_port, dbpath)
 
-chosen_mode = sys.argv[2]
+chosen_mode = "none" if len(sys.argv) < 3 else sys.argv[2]
 
 if chosen_mode == "upload":
 
@@ -204,10 +213,14 @@ if chosen_mode == "upload":
             f = pre_source.extractfile(member)
             for line in f:
                 line = line.decode('utf-8')
-                psql_source_f.write(' '.join(line.strip().split() + [str(cat_id), str(tranche_id), '\n']))
+                psql_source_f.write(' '.join(line.strip().split() + [str(cat_id), str(tranche_id)]) + "\n")
 
-    sys.exit(1)
-    call_psql(database_port, psqlfile=BINDIR + "/psql/tin_revised_copy.pgsql", vars=psqlvars)
+    psql_source_f.close()
+    #sys.exit(1)
+    code = call_psql(database_port, psqlfile=BINDIR + "/psql/tin_revised_copy.pgsql", vars=psqlvars)
+    if code == 0:
+        print("operation completed successfully!")
+    os.remove(psqlvars["source_f"])
 
 
     

@@ -124,22 +124,23 @@ FROM
  */
 --- prepare temporary tables for loading in data
 CREATE TEMPORARY TABLE temp_load (
-    smiles char(64),
-    code char(64),
-    sub_fk int,
-    code_fk int,
+    smiles varchar,
+    code varchar,
+    sub_fk int DEFAULT NULL,
+    code_fk int DEFAULT NULL,
+    cat_itm_id int DEFAULT NULL,
     cat_fk smallint,
     tranche_id smallint
 );
 
-CREATE TEMPORARY TABLE temp_load_sb (
+/*CREATE TEMPORARY TABLE temp_load_sb (
     smiles mol,
     id int,
     tranche_id smallint
 );
 
 CREATE TEMPORARY TABLE temp_load_cc (
-    code char(64),
+    code varchar,
     cat_fk smallint,
     id int,
     tranche_id smallint
@@ -148,7 +149,8 @@ CREATE TEMPORARY TABLE temp_load_cc (
 CREATE TEMPORARY TABLE temp_load_cs (
     id int,
     sub_fk int,
-    code_fk int
+    code_fk int,
+    tranche_id smallint
 );
 
 ALTER TABLE temp_load_sb
@@ -158,7 +160,7 @@ ALTER TABLE temp_load_cc
     ALTER COLUMN id SET DEFAULT NULL;
 
 ALTER TABLE temp_load_cs
-    ALTER COLUMN id SET DEFAULT NULL;
+   ALTER COLUMN id SET DEFAULT NULL;*/
 
 --- create temp sequences for loading
 CREATE TEMPORARY SEQUENCE t_seq_sb;
@@ -178,21 +180,111 @@ SELECT
 SELECT
     setval('t_seq_cc', :cc_count);
 
+
+
 SELECT
     logg ('copying in new data...');
     ---currval('cat_content_id_seq'));
     --- source_f contains smiles:supplier:cat_id rows, with cat_id being the int describing the catalog the smiles:supplier pair comes from
     COPY temp_load (smiles, code, cat_fk, tranche_id)
 FROM
-    :'source_f';
+    :'source_f' DELIMITER ' ';
 
-SELECT
-    logg ('identifying all unique smiles');
+select logg('fixing supplier codes...');
 
+UPDATE
+    temp_load
+SET
+    code = replace(code, '____', '__')
+WHERE
+    code LIKE '%\_\_\_\_%';
+
+select logg('resolving smiles...');
+UPDATE
+    temp_load
+SET
+    sub_fk = sb.sub_id
+FROM
+    substance sb
+WHERE
+    sb.smiles::varchar = temp_load.smiles AND sb.tranche_id = temp_load.tranche_id;
+
+select logg('resolving supplier codes...');
+UPDATE
+    temp_load
+SET
+    code_fk = cc.cat_content_id
+FROM
+    catalog_content cc
+WHERE
+    cc.supplier_code = temp_load.code;
+
+select logg('identifying new smiles');
+UPDATE
+    temp_load
+SET
+    sub_fk = nextval('t_seq_sb')
+WHERE
+    sub_fk is NULL;
+
+select logg('identifying new supplier codes');
+UPDATE
+    temp_load
+SET
+    code_fk = nextval('t_seq_cc')
+WHERE
+    code_fk is NULL;
+
+select logg('resolving smiles:code pairs');
+UPDATE
+    temp_load
+SET
+    cat_itm_id = cs.cat_sub_itm_id
+FROM
+    catalog_substance cs
+WHERE
+    sub_fk = cs.sub_id_fk AND code_fk = cs.cat_content_fk;
+
+select logg('identifying new smiles:code pairs');
+UPDATE
+    temp_load
+SET
+    cat_itm_id = nextval('t_seq_cs')
+WHERE
+    cat_itm_id is NULL;
+
+select logg('inserting all distinct new smiles into final table');
+INSERT INTO substance_t(smiles, sub_id, tranche_id) (
+	SELECT DISTINCT ON(t.smiles)
+		mol_from_smiles(t.smiles::cstring), t.sub_fk, t.tranche_id
+	FROM
+		(SELECT smiles, sub_fk, tranche_id
+		 FROM temp_load 
+		 WHERE sub_fk > :sb_count) t);
+
+select logg('inserting all distinct new codes into final table');
+INSERT INTO catalog_content_t(supplier_code, cat_content_id, cat_id_fk, tranche_id) (
+	SELECT DISTINCT ON(t.code)
+		t.code, t.code_fk, t.cat_fk, t.tranche_id
+	FROM
+		(SELECT code, code_fk, cat_fk, tranche_id
+		 FROM temp_load
+		 WHERE code_fk > :cc_count) t);
+
+select logg('inserting all distinct new smiles:code pairs into final table');
+INSERT INTO catalog_substance_t(sub_id_fk, cat_content_fk, cat_sub_itm_id, tranche_id) (
+	SELECT DISTINCT ON(t.sub_fk, t.code_fk)
+		t.sub_fk, t.code_fk, t.cat_itm_id, t.tranche_id
+	FROM
+		(SELECT sub_fk, code_fk, cat_itm_id, tranche_id
+		 FROM temp_load
+		 WHERE cat_itm_id > :cs_count) t);
+
+/*
 --- load substance data to temp table
 INSERT INTO temp_load_sb (smiles, tranche_id)
 SELECT DISTINCT ON (smiles)
-    smiles,
+    mol_from_smiles(smiles::cstring),
     tranche_id
 FROM
     temp_load;
@@ -202,7 +294,7 @@ SELECT
 
 --- group by makes sure there are no duplicates in this table
 --- load cat_content data to temp table
-INSERT INTO temp_load_cc (code, cat_fk)
+INSERT INTO temp_load_cc (code, cat_fk, tranche_id)
 SELECT DISTINCT ON (code)
     code,
     cat_fk,
@@ -232,7 +324,7 @@ UPDATE
 SET
     id = nextval('t_seq_sb')
 WHERE
-    id = NULL;
+    id is NULL;
 
 SELECT
     logg ('resolving supplier code ids');
@@ -254,7 +346,7 @@ UPDATE
 SET
     id = nextval('t_seq_cc')
 WHERE
-    id = NULL;
+    id is NULL;
 
 SELECT
     logg ('resolving smiles back to catalog');
@@ -268,7 +360,7 @@ FROM
     temp_load_sb
 WHERE
     temp_load.tranche_id = temp_load_sb.tranche_id
-    AND temp_load.smiles = temp_load_sb.smiles;
+    AND temp_load.smiles = temp_load_sb.smiles::varchar;
 
 SELECT
     logg ('resolving supplier codes back to catalog');
@@ -277,7 +369,7 @@ SELECT
 UPDATE
     temp_load
 SET
-    cat_fk = temp_load_cc.id
+    code_fk = temp_load_cc.id
 FROM
     temp_load_cc
 WHERE
@@ -288,10 +380,11 @@ SELECT
     logg ('identifying unique catalog entries');
 
 --- get distinct catalog entries
-INSERT INTO temp_load_cs (sub_fk, code_fk)
+INSERT INTO temp_load_cs (sub_fk, code_fk, tranche_id)
 SELECT DISTINCT ON (sub_fk, code_fk)
     sub_fk,
-    code_fk
+    code_fk,
+    tranche_id
 FROM
     temp_load;
 
@@ -306,7 +399,7 @@ SET
 FROM
     catalog_substance cs
 WHERE
-    cs.cat_content_fk = temp_load_cs.cat_fk
+    cs.cat_content_fk = temp_load_cs.code_fk
     AND cs.sub_id_fk = temp_load_cs.sub_fk;
 
 --- assign cat_sub_itm_id value to new entries
@@ -315,12 +408,12 @@ UPDATE
 SET
     id = nextval('t_seq_cs')
 WHERE
-    id = NULL;
+    id is NULL;
 
 SELECT
     logg ('loading new substance data');
-    --- load new substance data in
-    INSERT INTO substance_t (sub_id, smiles, tranche_id)
+--- load new substance data in
+INSERT INTO substance_t (sub_id, smiles, tranche_id)
     SELECT
         id,
         smiles,
@@ -351,15 +444,17 @@ SELECT
     logg ('loading new catalog_substance data');
 
 --- and finally, cat_substance data
-INSERT INTO catalog_substance_t (cat_content_fk, sub_id_fk, cat_sub_itm_id)
+INSERT INTO catalog_substance_t (cat_content_fk, sub_id_fk, cat_sub_itm_id, tranche_id)
 SELECT
     code_fk,
-    smiles_fk,
-    id
+    sub_fk,
+    id,
+    tranche_id
 FROM
-    temp_load
+    temp_load_cs
 WHERE
-    temp_load.id > :cs_count;
+    temp_load_cs.id > :cs_count;
+*/
 
 --- update sequences with new values
 SELECT
@@ -374,11 +469,11 @@ SELECT
 --- free up a lil bit of memory because we can
 DROP TABLE temp_load;
 
-DROP TABLE temp_load_sb;
+/*DROP TABLE temp_load_sb;
 
 DROP TABLE temp_load_cc;
 
-DROP TABLE temp_load_cs;
+DROP TABLE temp_load_cs;*/
 
 
 /*
@@ -406,7 +501,7 @@ INSERT INTO constraint_save (tablename, constraintname) (
 
 --- keep a record of the pkeys so that we can rename them afterwards
 INSERT INTO pkey_save (tablename, columnname) (
-        VALUES ('substance', 'sub_id'), ('catalog_content', 'cat_content_id'), ('catalog_substance', 'cat_sub_itm_id'));
+        VALUES ('substance', 'sub_id'), ('catalog_content', 'cat_content_id'));
 
 --- initialize our record of indexes we need to rebuild
 --- also used for renaming them afterwards
@@ -508,6 +603,8 @@ END
 $$
 LANGUAGE plpgsql;
 
+COMMIT;
+
 SELECT
     logg ('cleaning up...');
 
@@ -523,5 +620,4 @@ SELECT
 /*
  *  END BOILERPLATE FINALIZATION
  */
-COMMIT;
 
