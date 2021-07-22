@@ -206,7 +206,7 @@ if chosen_mode == "upload":
     psql_source_f = open(psqlvars["source_f"], 'w')
 
     data_catid = call_psql(database_port, cmd="select cat_id from catalog where short_name = '{}'".format(cat_shortname), getdata=True)
-    if len(data_catid) == 0:
+    if len(data_catid) <= 1:
         data_catid = call_psql(database_port, cmd="insert into catalog(name, short_name, updated) values ('{}', '{}', 'now()') returning cat_id".format(cat_shortname, cat_shortname), getdata=True)
     cat_id = int(data_catid[1][0])
 
