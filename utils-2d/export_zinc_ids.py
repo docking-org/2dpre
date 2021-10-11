@@ -1,6 +1,8 @@
 import sys
 import os
 
+BINDIR = os.path.dirname(sys.argv[0]) or '.'
+
 class Rangemap:
 
     def __init__(self, fn):
@@ -31,6 +33,40 @@ def base62(n):
         b62_str += digits[r]
     b62_str += digits[n]
     return ''.join(reversed(b62_str))
+
+def base62_rev(n):
+    digits="0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    tot = 0
+    for i, d in enumerate(reversed(n)):
+        tot += digits.index(d) * 62**i
+    return tot
+
+digits="0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+digits_map = {d:i for i, d in enumerate(digits)}
+def base62_rev_zincid(n):
+    tot = 0
+    # manually unrolling this loop to optimize for decoding zinc ids
+    tot += digits_map[n[9]]
+    tot += digits_map[n[8]] * 62
+    tot += digits_map[n[7]] * 3844
+    tot += digits_map[n[6]] * 238328
+    tot += digits_map[n[5]] * 14776336
+    tot += digits_map[n[4]] * 916132832
+    tot += digits_map[n[3]] * 56800235584
+    tot += digits_map[n[2]] * 3521614606208
+    tot += digits_map[n[1]] * 218340105584896
+    tot += digits_map[n[0]] * 13537086546263552
+    #for i, d in enumerate(reversed(n)):
+    #    tot += digits_map[d] * 62**i
+    return tot
+
+def get_info_zincid(zincid):
+    rangemap = Rangemap(BINDIR + "/mp_range.txt")
+    sub_id = base62_rev(zincid[6:])
+    hac = base62_rev(zincid[4])
+    logp = base62_rev(zincid[5])
+    tranche = rangemap.getinv(hac, logp)
+    return tranche, sub_id
 
 def export_to_file(infile, outfilehandle, tranche, binpath):
 

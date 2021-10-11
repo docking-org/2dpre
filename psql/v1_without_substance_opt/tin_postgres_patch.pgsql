@@ -45,8 +45,6 @@ CREATE TABLE substance_t (
     LIKE substance INCLUDING defaults
 );
 
-ALTER TABLE substance_t alter column smiles type varchar using smiles::varchar;
-
 DROP TABLE IF EXISTS catalog_content_t CASCADE;
 CREATE TABLE catalog_content_t (
     LIKE catalog_content INCLUDING defaults
@@ -112,7 +110,7 @@ SELECT
 
 INSERT INTO substance_t (sub_id, smiles, purchasable, date_updated)
 SELECT
-    sub_id, smiles::varchar, purchasable, date_updated
+    sub_id, smiles, purchasable, date_updated
 FROM
     substance;
 
@@ -321,10 +319,7 @@ INSERT INTO index_save (
     tablename,
     indexname,
     indexdef) (
-    VALUES 
-	(
-	    'substance', 'smiles_hash_idx', 'CREATE INDEX smiles_hash_idx ON public.substance using hash(smiles)'),
-	(
+    VALUES (
             'catalog_content', 'catalog_content_supplier_code_idx', 'CREATE INDEX catalog_content_supplier_code_idx ON public.catalog_content (supplier_code)'),
         (
             'catalog_substance', 'catalog_substance_sub_id_fk_idx', 'CREATE INDEX catalog_substance_sub_id_fk_idx ON public.catalog_substance (sub_id_fk, tranche_id)'),

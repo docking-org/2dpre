@@ -1,3 +1,5 @@
+#!/bin/python
+# utils-2d/get_partition_tranche_files.py
 import os
 import sys
 
@@ -29,7 +31,7 @@ start, end = sys.argv[2], sys.argv[3]
 basedir = os.path.dirname(__file__)
 
 #sys.stderr.write("{} {}".format(start, end))
-rangemap = Rangemap(os.path.join(basedir, "mp_range.txt"))
+rangemap = Rangemap(os.path.join(basedir, "common_files/mp_range.txt"))
 start, end = rangemap.get(start), rangemap.get(end)
 
 out = []

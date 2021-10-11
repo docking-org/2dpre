@@ -1,3 +1,6 @@
+#!/bin/python
+# utils-2d/decode_zinc_ids.py
+
 import sys
 import os
 

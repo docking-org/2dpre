@@ -1,0 +1,34 @@
+This folder contains utilities for getting statistics on the zinc22 database system. 
+
+I will include a brief explanation of each script in this readme:
+
++ get_zinc22_table_size_ests.bash
+  - gets an approximate count for the number of rows in the substance, catalog_content, and catalog_substance tables for all operational tin databases
+
++ get_zinc22_patch_status.bash
+  - retrieves the status of relevant patches for all operational tin databases
+  - new patches that are considered relevant may be added over time, and some patches may become irrelevant. The list of relevant patches is stored in relevant_patches.txt
+
++ get_zinc22_dup_estimate_substance.bash
+  - gets an estimate of how many substances are duplicated per 100000 for each tin database
+  - the script takes a single sample of 100000 substances from each tin database and checks how many are duplicated, therefore the number produced is not 100% accurate to the real duplicate rate
+  - this operation can only take place if the database has received the substanceopt patch, which creates a hash index on substance(smiles)
+
++ get_zinc22_dup_estimate_supplier.bash
+  - gets an estimate of how many supplier codes are duplicated per 100000 for each tin database
+  - this works identically to how the substance estimate works
+  - no special patch is necessary since there is an index on supplier_codes for every tin database
+
++ get_zinc22_tranche_mappings.bash
+  - finds out how each tranche maps to a database:port
+  - this script requires ssh-ing to each machine, and expects a file containing a password
+  - therefore this one should only be run occasionally when the database mappings are modified
+
+All statistics are written to the "statistics" directory under the relevant sub-directory. Each new statistics file is timestamped so the database may be analyzed on how it changes over time
+
+statistics cron jobs are running on n-9-21 under user xyz as follows: 
+
+0 0 */2 * * bash ~xyz/btingle/bin/2dload.testing/zinc22_stats/get_zinc22_table_size_ests.bash
+0 0 */2 * * bash ~xyz/btingle/bin/2dload.testing/zinc22_stats/get_zinc22_patch_status.bash
+0 0 */7 * * bash ~xyz/btingle/bin/2dload.testing/zinc22_stats/get_zinc22_dup_estimate_substance.bash
+0 0 */7 * * bash ~xyz/btingle/bin/2dload.testing/zinc22_stats/get_zinc22_dup_estimate_supplier.bash

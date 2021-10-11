@@ -1,4 +1,5 @@
 #!/bin/bash
+# utils-2d/2d_new_patch_slurm.bash
 
 if [ -z $BINDIR ]; then
 	BINDIR=$(dirname $0)
@@ -10,7 +11,7 @@ if [ -z $BINDIR ]; then
 fi
 export BINDIR
 
-NPARALLEL=${NPARALLEL-2}
+NPARALLEL=${NPARALLEL-3}
 HOST=$(hostname | cut -d'.' -f1)
 
 joblist_name="/local2/load/2d_patch_$(date +%s)_joblist.txt"
@@ -27,4 +28,6 @@ done
 
 njobs=$(cat $joblist_name | wc -l)
 
-sbatch -a 1-$njobs%$NPARALLEL -o /nfs/exb/zinc22/2dload_logs/psql_$HOST/%x-$PORT-%A-%a.out -w $HOST -J 2dpatch $BINDIR/runjob_2dload_new.bash $joblist_name $BINDIR
+# each machine has 80 cores, so each job will reserve 1/4 of the machines cpu power, which should be more than enough
+# this also means that other jobs will not interfere with the patching, while still allowing them some room
+sbatch -c 20 -a 1-$njobs%$NPARALLEL -o /nfs/exb/zinc22/2dload_logs/psql_$HOST/%x-%A-%a.out -w $HOST -J 2dpatch $BINDIR/runjob_2dload_new.bash $joblist_name $BINDIR

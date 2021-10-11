@@ -49,8 +49,6 @@ CREATE TABLE substance_t (
     LIKE substance INCLUDING defaults
 );
 
-ALTER TABLE substance_t ALTER COLUMN smiles TYPE varchar USING smiles::varchar;
-
 DROP TABLE IF EXISTS catalog_content_t CASCADE;
 
 CREATE TABLE catalog_content_t (
@@ -267,7 +265,7 @@ WHERE
 select logg('inserting all distinct new smiles into final table');
 INSERT INTO substance_t(smiles, sub_id, tranche_id) (
 	SELECT DISTINCT ON(t.smiles)
-		t.smiles, t.sub_fk, t.tranche_id
+		mol_from_smiles(t.smiles::cstring), t.sub_fk, t.tranche_id
 	FROM
 		(SELECT smiles, sub_fk, tranche_id
 		 FROM temp_load 
