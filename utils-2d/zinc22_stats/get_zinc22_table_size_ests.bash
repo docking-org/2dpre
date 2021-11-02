@@ -8,7 +8,7 @@ stats_file=$BINDIR/statistics/table_sizes/table_sizes_$(date "+%m_%d_%Y").txt
 
 printf "sub_est\tsup_est\tcat_est\n" > $stats_file
 
-for entry in $(cat $BINDIR/current_databases); do
+for entry in $(cat $BINDIR/../common_files/current_databases.txt); do
 
 	host=$(echo $entry | cut -d':' -f1)
 	port=$(echo $entry | cut -d':' -f2)

@@ -12,7 +12,7 @@ current_patches=$(cat $BINDIR/relevant_patches.txt)
 printf "%20s %20s %20s %20s %20s %20s\n" host:port ${current_patches} > $stats_file
 
 psqlargs="-d tin -U tinuser --csv"
-for entry in $(cat $BINDIR/current_databases); do
+for entry in $(cat $BINDIR/../common_files/current_databases.txt); do
 
 	host=$(echo $entry | cut -d':' -f1)
         port=$(echo $entry | cut -d':' -f2)

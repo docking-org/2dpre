@@ -4,33 +4,33 @@ import subprocess
 import tarfile
 import shutil
 
-from load_app.common import *
-from load_app.patches.escape import *
-from load_app.patches.postgres import *
-from load_app.patches.renormalize import *
-from load_app.patches.substanceopt import *
+from load_app.tin.common import *
+from load_app.tin.patches.escape import *
+from load_app.tin.patches.postgres import *
+from load_app.tin.patches.renormalize import *
+from load_app.tin.patches.substanceopt import *
 
-from load_app.operations.deplete import deplete
-from load_app.operations.upload import upload
-from load_app.operations.upload_legacy import upload_legacy
+from load_app.tin.operations.deplete import deplete as tin_deplete
+from load_app.tin.operations.upload import upload as tin_upload
+from load_app.tin.operations.upload_legacy import upload_legacy as tin_upload_legacy
 
 if len(sys.argv) == 1:
     print("usages:")
-    print("2dload_new.py [port] upload [source_f.pre] [catalog_shortname]")
+    print("2dload.py [port] upload [source_f.pre] [catalog_shortname]")
     print("       ----> uploads source_f.pre to database @ port")
     print("       ----> example:")
     print("       ----> 2dload_new.py 5434 upload /nfs/exb/zinc22/2dpre_results/s/34.pre s")
     print()
-    print("2dload_new.py [port]")
+    print("2dload.py [port]")
     print("       ----> applies pending patches to database @ port without doing anything else")
     print()
-    print("2dload_new.py [port] deplete [true/false] {file=[file.pre] | catalog=[short_name]}")
+    print("2dload.py [port] deplete [true/false] {file=[file.pre] | catalog=[short_name]}")
     print("       ----> depletes a given catalog or supplier code sample")
     print("       ----> example:")
     print("       ----> 2dload_new.py 5434 deplete true file=/nfs/exb/zinc22/2dpre_results/zinc20-stock/37.pre")
     print("       ----> 2dload_new.py 5434 deplete true catalog=zinc20-stock")
     print()
-    print("2dload_new.py [port] upload_legacy [partition number]")
+    print("2dload.py [port] upload_legacy [partition number]")
     print("       ----> uploads to a database using legacy files")
     sys.exit(0)
 
@@ -86,21 +86,21 @@ if not get_patched(database_port, "normalize_p2") and not nopatch:
 
 if chosen_mode == "upload":
 
-    source_f = sys.argv[3]
-    cat_shortname = sys.argv[4]
+    source_files = sys.argv[3].split()
+    cat_shortnames = sys.argv[4].split()
 
-    upload(database_port, source_f, cat_shortname)
+    tin_upload(database_port, source_files, cat_shortnames)
 
 # new upload tool for uploading legacy data to new system
 if chosen_mode == "upload_legacy":
 
     partition_number = int(sys.argv[3])
 
-    upload_legacy(database_port, partition_number)
+    tin_upload_legacy(database_port, partition_number)
 
 if chosen_mode == "deplete":
 
     boolval = True if sys.argv[3].lower() == "true" else False
     src = sys.argv[4]
 
-    deplete(database_port, boolval, src)
+    tin_deplete(database_port, boolval, src)

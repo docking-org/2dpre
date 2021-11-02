@@ -16,6 +16,10 @@ alter table substance_t add primary key (sub_id, tranche_id);
 -- new hash index, testing it out. Might considerably increase load performance!
 create index smiles_hash_idx_t on substance_t using hash(smiles);
 
+--- instead of all this bloody complicated code (that doesn't seem to work for some infernal reason) just cut out all the chaff and skip to the renormalization stage
+truncate table catalog_substance;
+
+/*
 --- adding in this huge chunk of code to make sure we don't get an "invalid_foreign_key" exception
 do
         $$
@@ -41,14 +45,18 @@ do
                         raise notice 'failed to add foreign key- rebuilding catalog_substance to correct this';
                         create table catalog_substance_t (like catalog_substance including defaults);
                         if succeeded_sub then
-                                insert into catalog_substance_t (select * from catalog_substance where cat_content_fk in (select cat_content_id from catalog_content));
-                                alter table catalog_substance drop constraint catalog_substance_sub_id_fk_fkey;
+                                insert into catalog_substance_t (select cs.sub_id_fk, cs.cat_content_fk, cs.cat_sub_itm_id, cs.tranche_id from catalog_substance left join catalog_content on cat_content_fk = cat_content_id where cat_content_id is not null);
+				update catalog_substance_t cs set tranche_id = sb.tranche_id from substance_t sb where sb.sub_id = cs.sub_id_fk and sb.tranche_id != cs.tranche_id;
+				alter table catalog_substance drop constraint catalog_substance_sub_id_fk_fkey;
+				alter table catalog_substance drop constraint catalog_substance_cat_itm_fk_fkey;
                         else
-                                insert into catalog_substance_t (select * from catalog_substance where sub_id_fk in (select sub_id from substance_t) and cat_content_id in (select cat_content_id from catalog_content));
+                                insert into catalog_substance_t (select t.sub_id_fk, t.cat_content_fk, t.cat_sub_itm_id, t.tranche_id from (select sub_id_fk, cat_content_fk, cat_sub_itm_id, sb.tranche_id from catalog_substance cs left join substance_t sb on sub_id_fk = sub_id where sub_id is not null) t left join catalog_content on t.cat_content_fk = cat_content_id where cat_content_id is not null);
+				alter table catalog_substance drop constraint catalog_substance_sub_id_fk_fkey;
+				alter table catalog_substance drop constraint catalog_substance_cat_itm_fk_fkey;
                         end if;
                         raise notice 'finished dropping bogus entries, rebuilding table indexes and constraints';
-                        create index catalog_substance_cat_id_fk_idx_t on catalog_substance (cat_content_fk);
-                        create index catalog_substance_sub_id_fk_idx_t on catalog_substance (sub_id_fk, tranche_id);
+                        create index catalog_substance_cat_id_fk_idx_t on catalog_substance_t (cat_content_fk);
+                        create index catalog_substance_sub_id_fk_idx_t on catalog_substance_t (sub_id_fk, tranche_id);
                         alter table catalog_substance_t add constraint catalog_substance_sub_id_fk_fkey foreign key (sub_id_fk, tranche_id) references substance_t (sub_id, tranche_id);
                         alter table catalog_substance_t add constraint catalog_substance_cat_itm_fk_fkey foreign key (cat_content_fk) references catalog_content (cat_content_id);
 
@@ -63,7 +71,7 @@ do
                         raise notice '%\n%\n%\n', msg_text, exception_detail, exception_hint;
                         raise exception 'something unexpected has happened!! PANIC!!!!!!!!!!!!!!!!!!!!!';
         end $$ language plpgsql;
-
+*/
 --- there may be some downtime after the tables are swapped when these changes are being committed, but other than that the amount of exclusive locks should be minimum
         alter table substance rename to substance_trash;
         alter table substance_t rename to substance;
@@ -72,5 +80,3 @@ do
         alter index smiles_hash_idx_t rename to smiles_hash_idx;
 
 commit;
-
-vacuum analyze;

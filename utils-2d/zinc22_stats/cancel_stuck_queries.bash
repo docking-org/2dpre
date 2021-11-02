@@ -6,7 +6,7 @@ BINDIR=${BINDIR-.}
 days_threshold=${1-10}
 particular_host=$2
 
-for entry in $(cat $BINDIR/current_databases); do
+for entry in $(cat $BINDIR/../common_files/current_databases.txt); do
 
 	host=$(echo $entry | cut -d':' -f1)
 	port=$(echo $entry | cut -d':' -f2)

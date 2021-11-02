@@ -163,13 +163,28 @@ WHERE
 
 select logg('identifying new smiles');
 
+/*
 UPDATE
     temp_load
 SET
     sub_fk = nextval('t_seq_sb')
 WHERE
-    sub_fk is NULL;
+  sub_fk is NULL;
+*/
 
+create temporary table new_smiles (
+	smiles varchar,
+	tranche_id smallint,
+	sub_id int
+);
+
+insert into new_smiles (select t.smiles smiles, t.tranche_id tranche_id, nextval('t_seq_sb') new_id from (select distinct smiles, tranche_id from temp_load where sub_fk is null) t);
+
+update temp_load set sub_fk = new_smiles.sub_id from new_smiles where temp_load.sub_fk is null and new_smiles.smiles = temp_load.smiles and new_smiles.tranche_id = temp_load.tranche_id;
+
+--update temp_load set sub_fk = tt.new_id from (select t.smiles smiles, t.tranche_id tranche_id, nextval('t_seq_sb') new_id from (select distinct smiles, tranche_id from temp_load where sub_fk is null) t) tt where temp_load.sub_fk is null and temp_load.smiles = tt.smiles and temp_load.tranche_id = tt.tranche_id;
+
+/*
 select logg('identifying new supplier codes');
 UPDATE
     temp_load
@@ -177,6 +192,19 @@ SET
     code_fk = nextval('t_seq_cc')
 WHERE
     code_fk is NULL;
+*/
+
+create temporary table new_codes (
+	supplier_code varchar,
+	sup_id int,
+	cat_id_fk smallint
+);
+
+insert into new_codes(supplier_code, sup_id, cat_id_fk) (select t.code code, nextval('t_seq_cc') new_id, cat_fk from (select distinct on(code) code, cat_fk from temp_load where code_fk is null) t);
+
+update temp_load set code_fk = new_codes.sup_id from new_codes where temp_load.code_fk is null and new_codes.supplier_code = temp_load.code;
+
+--update temp_load set code_fk = tt.new_id from (select t.code code, nextval('t_seq_cc') new_id from (select distinct code from temp_load where code_fk is null) t) tt where temp_load.code_fk is null and temp_load.code = tt.code;
 
 select logg('resolving smiles:code pairs');
 UPDATE
@@ -188,6 +216,7 @@ FROM
 WHERE
     sub_fk = cs.sub_id_fk AND code_fk = cs.cat_content_fk;
 
+/*
 select logg('identifying new smiles:code pairs');
 UPDATE
     temp_load
@@ -195,19 +224,42 @@ SET
     cat_itm_id = nextval('t_seq_cs')
 WHERE
     cat_itm_id is NULL;
+*/
 
+create temporary table new_maps (
+	sub_id_fk int,
+	code_id_fk int,
+	tranche_id smallint,
+	cat_sub_itm_id int
+);
+
+insert into new_maps (select sub_fk, code_fk, tranche_id, nextval('t_seq_cs') new_id from (select distinct on (sub_fk, code_fk) sub_fk, code_fk, tranche_id from temp_load where cat_itm_id is null) t);
+
+--update temp_load set cat_itm_id = new_maps.cat_sub_itm_id from new_maps where temp_load.cat_itm_id is null and temp_load.code_fk = new_maps.code_id_fk and temp_load.sub_fk = new_maps.sub_id_fk;
+
+--update temp_load set cat_itm_id = tt.new_id from (select sub_fk, code_fk, nextval('t_seq_cs') new_id from (select distinct sub_fk, code_fk from temp_load where cat_itm_id is null) t) tt where temp_load.cat_itm_id is null and temp_load.code_fk = tt.code_fk and temp_load.sub_fk = tt.sub_fk;
+
+insert into substance_t(smiles, tranche_id, sub_id) (select * from new_smiles);
+insert into catalog_content_t(supplier_code, cat_content_id, cat_id_fk) (select supplier_code, sup_id, cat_id_fk from new_codes);
+insert into catalog_substance_t(sub_id_fk, cat_content_fk, tranche_id, cat_sub_itm_id) (select * from new_maps);
+
+drop table new_smiles;
+drop table new_codes;
+drop table new_maps;
+
+/*
 select logg('inserting all distinct new smiles into final table');
 INSERT INTO substance_t(smiles, sub_id, tranche_id) (
-	SELECT DISTINCT ON(t.smiles)
-		t.smiles, nextval('t_seq_sb'), t.tranche_id
+	SELECT DISTINCT ON(t.sub_fk)
+		t.smiles, t.sub_fk, t.tranche_id
 	FROM
 		(SELECT smiles, sub_fk, tranche_id
 		 FROM temp_load 
-		 WHERE sub_fk > :cc_count) t);
+		 WHERE sub_fk > :sb_count) t);
 
 select logg('inserting all distinct new codes into final table');
 INSERT INTO catalog_content_t(supplier_code, cat_content_id, cat_id_fk, tranche_id) (
-	SELECT DISTINCT ON(t.code)
+	SELECT DISTINCT ON(t.code_fk)
 		t.code, t.code_fk, t.cat_fk, t.tranche_id
 	FROM
 		(SELECT code, code_fk, cat_fk, tranche_id
@@ -216,15 +268,16 @@ INSERT INTO catalog_content_t(supplier_code, cat_content_id, cat_id_fk, tranche_
 
 select logg('inserting all distinct new smiles:code pairs into final table');
 INSERT INTO catalog_substance_t(sub_id_fk, cat_content_fk, cat_sub_itm_id, tranche_id) (
-	SELECT DISTINCT ON(t.sub_fk, t.code_fk)
+	SELECT DISTINCT ON(t.cat_itm_id)
 		t.sub_fk, t.code_fk, t.cat_itm_id, t.tranche_id
 	FROM
 		(SELECT sub_fk, code_fk, cat_itm_id, tranche_id
 		 FROM temp_load
 		 WHERE cat_itm_id > :cs_count) t);
+*/
 
 --- fix tranche_ids in catalog_substance if they exist (shouldn't happen, still unsure why there are a few entries like this)
-UPDATE catalog_substance_t SET tranche_id = sb.sub_id FROM substance_t sb WHERE sb.sub_id = sub_id_fk AND sb.tranche_id != tranche_id;
+--UPDATE catalog_substance_t cs SET tranche_id = sb.sub_id FROM substance_t sb WHERE sb.sub_id = sub_id_fk AND sb.tranche_id != cs.tranche_id;
 
 --- update sequences with new values
 SELECT
@@ -290,9 +343,9 @@ SELECT
     logg ('cleaning up...');
 
 --- finish up with vacuum & analysis to optimize performance
-VACUUM;
+--VACUUM;
 
-ANALYZE;
+--ANALYZE;
 
 SELECT
     logg ('done with everything!');

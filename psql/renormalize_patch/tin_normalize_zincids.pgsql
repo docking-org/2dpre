@@ -21,6 +21,9 @@ begin;
 	--- we could simply erase all entries from catalog_substance, but then the live databases would be totally screwed (which we are trying to avoid)
 	--- it is also possible to drop the foreign key constraints, but this might mess with carteblanche frontend.
 	--- there is a janky way to add constraints without having them validated, but that has proved to be a mistake in the past
+
+	--- this crappy piece of code doesn't work. since substance_opt and escape both truncate the catalog_substance table now, it should be fine to leave this out
+	/*
 	do
 	$$
 	declare
@@ -66,7 +69,7 @@ begin;
 			get stacked diagnostics msg_text = MESSAGE_TEXT, exception_detail = PG_EXCEPTION_DETAIL, exception_hint = PG_EXCEPTION_HINT;
 			raise notice '%\n%\n%\n', msg_text, exception_detail, exception_hint;
 			raise exception 'something unexpected has happened!! PANIC!!!!!!!!!!!!!!!!!!!!!';
-	end $$ language plpgsql;
+	end $$ language plpgsql;*/
 
 	--- there may be some downtime after the tables are swapped when these changes are being committed, but other than that the amount of exclusive locks should be minimum
 	alter table substance rename to substance_trash;

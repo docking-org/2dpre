@@ -1,3 +1,5 @@
+set maintenance_work_mem = 1e6;
+
 CREATE OR REPLACE FUNCTION logg (t text)
     RETURNS integer
     AS $$
@@ -83,7 +85,7 @@ select logg('done with step 04');
 select logg('step 05: copying new substance entries to replacement table');
 --- insert new smiles to new substance table
 insert into substance_t(smiles, sub_id, tranche_id) (
-	select distinct on (sub_id) smiles, sub_id, tranche_id from new_substances);
+	select distinct on (sub_id, tranche_id) smiles, sub_id, tranche_id from new_substances);
 select logg('done with step 05');
 
 select logg('step 06: copying old substances to replacement table');

@@ -438,7 +438,3 @@ SELECT
  */
 COMMIT;
 
-VACUUM;
-
-ANALYZE;
-

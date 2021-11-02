@@ -1,0 +1,4 @@
+truncate table substance cascade;
+truncate table catalog cascade;
+vacuum full;
+analyze;
