@@ -1,4 +1,4 @@
-set maintenance_work_mem = 1e6;
+set work_mem = 2000000;
 
 CREATE OR REPLACE FUNCTION logg (t text)
     RETURNS integer

@@ -46,18 +46,18 @@ do
 
 		sudo -u postgres -H -- psql -p $PSQL_PORT -c "create database antimony;"
 		#sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "create extension rdkit;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "create extension intarray;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin < $BINDIR/antimony.sql
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "GRANT CONNECT ON DATABASE antimony TO zincread;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "GRANT CONNECT ON DATABASE antimony TO zincwrite;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "GRANT CONNECT ON DATABASE antimony TO zincfree;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "GRANT CONNECT ON DATABASE antimony TO admin;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "GRANT CONNECT ON DATABASE antimony TO adminprivate;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "GRANT CONNECT ON DATABASE antimony TO tinuser;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "alter role tinuser with superuser;"		
+		sudo -u postgres -H -- psql -p $PSQL_PORT antimony -c "create extension intarray;"
+		sudo -u postgres -H -- psql -p $PSQL_PORT antimony < $BINDIR/antimony.sql
+		sudo -u postgres -H -- psql -p $PSQL_PORT antimony -c "GRANT CONNECT ON DATABASE antimony TO zincread;"
+		sudo -u postgres -H -- psql -p $PSQL_PORT antimony -c "GRANT CONNECT ON DATABASE antimony TO zincwrite;"
+		sudo -u postgres -H -- psql -p $PSQL_PORT antimony -c "GRANT CONNECT ON DATABASE antimony TO zincfree;"
+		sudo -u postgres -H -- psql -p $PSQL_PORT antimony -c "GRANT CONNECT ON DATABASE antimony TO admin;"
+		sudo -u postgres -H -- psql -p $PSQL_PORT antimony -c "GRANT CONNECT ON DATABASE antimony TO adminprivate;"
+		sudo -u postgres -H -- psql -p $PSQL_PORT antimony -c "GRANT CONNECT ON DATABASE antimony TO antimonyuser;"
+		sudo -u postgres -H -- psql -p $PSQL_PORT antimony -c "alter role antimonyuser with superuser;"		
 		#sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "ALTER table public.catalog ADD UNIQUE (short_name);"
 
-		sed -i "85i host    antimony             tinuser          10.20.0.0/16           trust" $PG_HBA_FILE_PATH
+		sed -i "85i host    antimony             antimonyuser          10.20.0.0/16           trust" $PG_HBA_FILE_PATH
 		sed -i "86i host    antimony             zincread         10.20.0.0/16           trust" $PG_HBA_FILE_PATH
 		sed -i "87i host    antimony             zincfree         10.20.0.0/16           trust" $PG_HBA_FILE_PATH
 		sed -i "88i host    antimony             test             10.20.0.0/16           trust" $PG_HBA_FILE_PATH

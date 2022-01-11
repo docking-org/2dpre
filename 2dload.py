@@ -9,10 +9,15 @@ from load_app.tin.patches.escape import *
 from load_app.tin.patches.postgres import *
 from load_app.tin.patches.renormalize import *
 from load_app.tin.patches.substanceopt import *
+from load_app.tin.patches.version import *
 
 from load_app.tin.operations.deplete import deplete as tin_deplete
 from load_app.tin.operations.upload import upload as tin_upload
 from load_app.tin.operations.upload_legacy import upload_legacy as tin_upload_legacy
+from load_app.tin.operations.antimony_export import export_all_from_tin as export_antimony
+#from load_app.tin.apply_config import apply_config
+
+from load_app.antimony.operations.upload import upload_antimony
 
 if len(sys.argv) == 1:
     print("usages:")
@@ -49,10 +54,14 @@ except:
     print("port must be an integer!")
     sys.exit(1)
 
+# keep database config up to date with any changes
+# apply_config(database_port)
+
 dbpath = get_db_path(database_port)
 # make sure patches are hosted on postgres now, rather than on disk
 patch_patch(database_port, dbpath)
 
+# sort of a messy way to do patches (code-wise) but it functions
 print(database_port)
 if not get_patched(database_port, "postgres") and not nopatch:
     print("this database hasn't received the postgres patch, patching now")
@@ -84,6 +93,12 @@ if not get_patched(database_port, "normalize_p2") and not nopatch:
         print("patch failed!")
         sys.exit(1)
 
+if not get_patched(database_port, "version") and not nopatch:
+    print("adding versioning system to tin!")
+    if not patch_database_version(database_port, dbpath):
+        print("patch failed!")
+        sys.exit(1)
+
 if chosen_mode == "upload":
 
     source_files = sys.argv[3].split()
@@ -104,3 +119,20 @@ if chosen_mode == "deplete":
     src = sys.argv[4]
 
     tin_deplete(database_port, boolval, src)
+
+# should work on logically separating tin/antimony operations within the command line arguments
+# e.g tin operations are all prefixed like:
+# 2dload.py [port] tin [operation] [args]
+# similarly with antimony:
+# 2dload.py [port] antimony [operation] [args]
+if chosen_mode == "tin_export_antimony":
+
+    hostname = os.uname()[1].split(".")[0]
+
+    antimony_export(hostname, database_port)
+
+if chosen_mode == "antimony_upload":
+
+    hostname = os.uname()[1].split(".")[0]
+
+    upload_antimony(hostname, database_port)

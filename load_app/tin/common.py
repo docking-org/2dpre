@@ -46,6 +46,13 @@ def call_psql(db_port, cmd=None, psqlfile=None, vars={}, getdata=False, rethandl
             code = ecode
         return code
 
+def increment_version(db_port):
+    call_psql(db_port, cmd="update tin_meta set ivalue = ivalue + 1 where varname = 'version'")
+
+def get_version(db_port):
+    data = call_psql(db_port, cmd="select ivalue from tin_meta where varname = 'version'", getdata=True)[1][0]
+    return int(data)
+
 def get_db_path(db_port):
     srcdir = "/local2/load"
     db_path = None

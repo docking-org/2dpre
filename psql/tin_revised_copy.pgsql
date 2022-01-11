@@ -1,5 +1,6 @@
 BEGIN;
 
+set work_mem = 2000000;
 
 /*
  *  BEGIN BOILERPLATE INITIALIZATION
@@ -41,13 +42,15 @@ SELECT
     logg ('cloning table schema');
 
 --- made a little whoopsie in the configuration before, we don't really use inchikeys so make them nullable
-ALTER TABLE substance ALTER COLUMN inchikey DROP NOT NULL;
+-- ALTER TABLE substance ALTER COLUMN inchikey DROP NOT NULL;
 
 DROP TABLE IF EXISTS substance_t CASCADE;
 
 CREATE TABLE substance_t (
     LIKE substance INCLUDING defaults
 );
+
+ALTER TABLE substance_t alter column inchikey drop not null;
 
 ALTER TABLE substance_t ALTER COLUMN smiles TYPE varchar USING smiles::varchar;
 

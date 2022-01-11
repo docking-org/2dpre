@@ -54,6 +54,7 @@ def upload(database_port, source_files, cat_shortnames):
     code = call_psql(database_port, vars=psqlvars, psqlfile=BINDIR + "/psql/tin_revised_copy.pgsql")
 
     if code == 0:
+        increment_version(database_port)
         print("upload successfull!")
 
     os.remove(psql_source_f.name)

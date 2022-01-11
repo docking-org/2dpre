@@ -11,9 +11,9 @@ begin;
 
 	);
 
-	copy source_t(supplier_code, last4hash, machine_id, cat_content_id) from :'source_f';
+	copy source_t(supplier_code, last4hash, cat_content_id, machine_id) from :'source_f' delimiter ' ';
 
-	update source_t set sup_id = supplier_codes.sup_id from supplier_codes sc where sc.supplier_code = source_t.supplier_code;
+	update source_t set sup_id = sc.sup_id from supplier_codes sc where sc.supplier_code = source_t.supplier_code;
 
 	create temporary table new_codes (
 
@@ -21,12 +21,12 @@ begin;
 		last4hash char(4),
 		sup_id int
 
-	)
+	);
 
 	insert into new_codes (select distinct on (supplier_code) supplier_code, last4hash, nextval('sup_id_seq') sup_id from source_t where sup_id is null);
 
-	update source_t st set st.sup_id = nc.sup_id from new_codes nc where st.supplier_code = nc.supplier_code;
-	update source_t st set st.map_id = sm.map_id from supplier_map sm where sm.sup_id_fk = st.sup_id and sm.machine_id_fk = st.machine_id;
+	update source_t st set sup_id = nc.sup_id from new_codes nc where st.supplier_code = nc.supplier_code;
+	update source_t st set map_id = sm.map_id from supplier_map sm where sm.sup_id_fk = st.sup_id and sm.machine_id_fk = st.machine_id;
 
 	create temporary table new_maps (
 
@@ -34,9 +34,9 @@ begin;
 		machine_id_fk smallint,
 		cat_content_id int,
 		map_id int
-	)
+	);
 
-	insert into new_maps (select distinct on (sup_id_fk, machine_id_fk) sup_id_fk, machine_id_fk, cat_content_id, nextval('map_id_seq') map_id from source_t where map_id is null);
+	insert into new_maps (select distinct on (sup_id, machine_id) sup_id, machine_id, cat_content_id, nextval('map_id_seq') map_id from source_t where map_id is null);
 
 	create table supplier_codes_t (like supplier_codes including defaults);
 	create table supplier_map_t (like supplier_map including defaults);
@@ -53,8 +53,8 @@ begin;
 	--create index sup_id_fk_idx_t on supplier_map (sup_id_fk);
 	--create index machine_id_fk_idx_t on supplier_map (machine_id_fk);
 	alter table supplier_map_t add primary key (sup_id_fk, machine_id_fk);
-	alter table supplier_map_t add constraint sup_id_fk_fkey_t references supplier_codes_t (sup_id);
-	alter table supplier_map_t add constraint machine_id_fk_fkey_t references tin_machines (machine_id);
+	alter table supplier_map_t add constraint sup_id_fk_fkey_t foreign key (sup_id_fk) references supplier_codes_t (sup_id);
+	alter table supplier_map_t add constraint machine_id_fk_fkey_t foreign key (machine_id_fk) references tin_machines (machine_id);
 
 	alter table supplier_map rename to supplier_map_trash;
 	alter table supplier_codes rename to supplier_codes_trash;

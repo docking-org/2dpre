@@ -21,8 +21,8 @@ CREATE ROLE root;
 ALTER ROLE root WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN NOREPLICATION NOBYPASSRLS;
 CREATE ROLE test;
 ALTER ROLE test WITH NOSUPERUSER INHERIT NOCREATEROLE CREATEDB LOGIN NOREPLICATION NOBYPASSRLS;
-CREATE ROLE tinuser;
-ALTER ROLE tinuser WITH SUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN NOREPLICATION NOBYPASSRLS PASSWORD 'md516a847029f27f45ebc318a781bc3df5a';
+CREATE ROLE antimonyuser;
+ALTER ROLE antimonyuser WITH SUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN NOREPLICATION NOBYPASSRLS PASSWORD 'md516a847029f27f45ebc318a781bc3df5a';
 CREATE ROLE zinc21;
 ALTER ROLE zinc21 WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN NOREPLICATION NOBYPASSRLS PASSWORD 'md50893f3c540509e267e4b24cef189e262';
 CREATE ROLE zincfree;
@@ -47,47 +47,48 @@ SET row_security = off;
 
 -- set up tables etc here
 
-create sequence sup_id_seq;
-create sequence machine_id_seq;
+create sequence public.sup_id_seq;
+create sequence public.machine_id_seq;
+create sequence public.map_id_seq;
 
-create table supplier_codes (
+create table public.supplier_codes (
 
 	supplier_code varchar,
 	last4hash char(4),
-	sup_id int primary key default nextval('sup_id_seq')
+	sup_id int primary key default nextval('public.sup_id_seq')
 
 );
 
-create index supplier_code_idx on supplier_codes using hash (supplier_code);
+create index supplier_code_idx on public.supplier_codes using hash (supplier_code);
 
-create table tin_machines (
+create table public.tin_machines (
 
 	hostname varchar,
 	port int,
-	machine_id int primary key default nextval('machine_id_seq')
+	machine_id int primary key default nextval('public.machine_id_seq')
 
 );
 
-create table supplier_map (
+create table public.supplier_map (
 
 	sup_id_fk int,
 	machine_id_fk smallint,
 	cat_content_id int,
-	map_id int,
+	map_id int primary key default nextval('public.map_id_seq'),
 
 	constraint sup_id_fk_fkey
 		foreign key (sup_id_fk)
-		references supplier_codes (sup_id),
+		references public.supplier_codes (sup_id),
 
 	constraint machine_id_fk_fkey
 		foreign key (machine_id_fk)
-		references tin_machines (machine_id)
+		references public.tin_machines (machine_id)
 
 );
 
 -- add unique index for select perf + validation of new data
-alter table supplier_map add primary key (sup_id_fk, machine_id_fk);
+--alter table supplier_map add primary key (sup_id_fk, machine_id_fk);
 
 -- create standard btree index (since we are dealing with integers)
---create index sup_id_fk_idx on supplier_map (sup_id_fk);
---create index machine_id_fk_idx on supplier_map (machine_id_fk);
+create index sup_id_fk_idx on public.supplier_map (sup_id_fk);
+create index machine_id_fk_idx on public.supplier_map (machine_id_fk);

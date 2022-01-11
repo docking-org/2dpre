@@ -1,5 +1,6 @@
-begin;
+set work_mem = 2000000;
 
+begin;
 	create temporary table source_t (sub_id int, tranche_id smallint, smiles varchar);
 
 	copy source_t(smiles, sub_id, tranche_id) from :'source_f';

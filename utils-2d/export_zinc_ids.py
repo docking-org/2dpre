@@ -60,17 +60,43 @@ def base62_rev_zincid(n):
     #    tot += digits_map[d] * 62**i
     return tot
 
+def base62_rev_zincid_opt(n):
+    tot = 0
+    # manually unrolling this loop to optimize for decoding zinc ids
+    tot += digits_map[n[9]]
+    tot += digits_map[n[8]] * 62
+    tot += digits_map[n[7]] * 3844
+    tot += digits_map[n[6]] * 238328
+    tot += digits_map[n[5]] * 14776336
+    tot += digits_map[n[4]] * 916132832
+    #tot += digits_map[n[3]] * 56800235584 # these should basically always be zero- none of our databases are large enough to reach these digits
+    #tot += digits_map[n[2]] * 3521614606208
+    #tot += digits_map[n[1]] * 218340105584896
+    #tot += digits_map[n[0]] * 13537086546263552
+    return tot
+
 def get_info_zincid(zincid):
-    rangemap = Rangemap(BINDIR + "/mp_range.txt")
+    rangemap = Rangemap(BINDIR + "/common_files/mp_range.txt")
     sub_id = base62_rev(zincid[6:])
     hac = base62_rev(zincid[4])
     logp = base62_rev(zincid[5])
     tranche = rangemap.getinv(hac, logp)
     return tranche, sub_id
 
+# tranche_id is known beforehand, like with files in /nfs/exb/zinc22/2d-*/H??/H??P???.smi.gz
+def zincid_to_subid_opt(infile, outfile, tranche_id, zincid_pos):
+    with open(outfile, 'w') as out:
+        with open(infile, 'r') as src:
+            # zincid column location specified beforehand
+            for line in src:
+                tokens = line.strip().split()
+                zincid = tokens[zincid_pos-1]
+                sub_id = base62_rev_zincid(zincid[6:])
+                out.write(" ".join(tokens[:zincid_pos-1] + [str(sub_id), str(tranche_id)] + tokens[zincid_pos:]) + "\n")
+
 def export_to_file(infile, outfilehandle, tranche, binpath):
 
-    rangemap=Rangemap(binpath + "/mp_range.txt")
+    rangemap=Rangemap(binpath + "/common_files/mp_range.txt")
     h_bucket, logp_bucket = rangemap.get(tranche)
 
     with open(infile, 'r') as smiles_file:

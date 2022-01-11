@@ -1,5 +1,6 @@
 BEGIN;
 
+set work_mem = 1000000;
 
 /*
  *  BEGIN BOILERPLATE INITIALIZATION

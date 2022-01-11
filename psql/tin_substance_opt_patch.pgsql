@@ -1,5 +1,7 @@
 begin;
 
+set work_mem = 1000000;
+
 create table substance_t (
 	sub_id int default nextval('sub_id_seq'),
 	smiles varchar not null,
