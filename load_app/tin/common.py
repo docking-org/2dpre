@@ -7,7 +7,7 @@ BINDIR = os.path.dirname(sys.argv[0]) or '.'
 BIG_SCRATCH_DIR = "/local2/load"
 
 # handy function for calling tin postgres commands or files
-def call_psql(db_port, cmd=None, psqlfile=None, vars={}, getdata=False, rethandle=False):
+def call_psql(db_port, cmd=None, psqlfile=None, vars={}, getdata=False, rethandle=False, stdin=None):
     psql = ["psql", "-p", str(db_port), "-d", "tin", "-U", "tinuser", "--csv"]
     
     for vname, vval in zip(vars.keys(), vars.values()):
@@ -21,7 +21,7 @@ def call_psql(db_port, cmd=None, psqlfile=None, vars={}, getdata=False, rethandl
     if getdata:
         data = []
         code = 0
-        psql_p = subprocess.Popen(psql, stdout=subprocess.PIPE)
+        psql_p = subprocess.Popen(psql, stdin=stdin, stdout=subprocess.PIPE)
         for line in psql_p.stdout:
             line = line.decode('utf-8')
             data += [line.strip().split(",")]
@@ -32,10 +32,10 @@ def call_psql(db_port, cmd=None, psqlfile=None, vars={}, getdata=False, rethandl
             code = ecode
         return data
     elif rethandle:
-        return subprocess.Popen(psql, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return subprocess.Popen(psql, stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         code = 0
-        p = subprocess.Popen(psql, stdout=subprocess.PIPE)
+        p = subprocess.Popen(psql, stdin=stdin, stdout=subprocess.PIPE)
         for line in p.stdout:
             line = line.decode('utf-8')
             print(line.strip())
@@ -46,12 +46,25 @@ def call_psql(db_port, cmd=None, psqlfile=None, vars={}, getdata=False, rethandl
             code = ecode
         return code
 
-def increment_version(db_port):
+def increment_version(db_port, uploadname):
     call_psql(db_port, cmd="update tin_meta set ivalue = ivalue + 1 where varname = 'version'")
+    version_no = get_version(db_port)
+    call_psql(db_port, cmd="insert into tin_meta(varname, svalue, ivalue) (values ('upload_name', '{}', {}))".format(uploadname, version_no))
 
 def get_version(db_port):
     data = call_psql(db_port, cmd="select ivalue from tin_meta where varname = 'version'", getdata=True)[1][0]
     return int(data)
+
+def get_tranche_id(port, tranchename):
+    data = call_psql(port, cmd="select tranche_id from tranches where tranche_name = '{}'".format(tranchename), getdata=True)
+    return int(data[1][0])
+
+def upload_complete(port, transaction_id):
+    data = call_psql(port, cmd="select svalue from tin_meta where svalue = '{}'".format(transaction_id), getdata=True)
+    if len(data) > 1:
+        return True
+    else:
+        return False
 
 def get_db_path(db_port):
     srcdir = "/local2/load"
@@ -96,6 +109,27 @@ def base62_rev_zincid(n):
     #for i, d in enumerate(reversed(n)):
     #    tot += digits_map[d] * 62**i
     return tot
+
+def get_tranches(port):
+    data = call_psql(port, cmd="select tranche_name from tranches", getdata=True)
+    return [d[0] for d in data[1:]]
+
+def zincid_to_subid_opt(infile, outfile, tranche_id, zincid_pos, only_output_zincid=False, writemode='w'):
+    with open(outfile, writemode) as out:
+        with open(infile, 'r') as src:
+            # zincid column location specified beforehand
+            for line in src:
+                tokens = line.strip().split()
+                zincid = tokens[zincid_pos-1]
+                try:
+                    sub_id = base62_rev_zincid(zincid[6:])
+                except:
+                    print(tokens)
+                    raise NameError("asdf")
+                if not only_output_zincid:
+                    out.write(" ".join(tokens[:zincid_pos-1] + [str(sub_id), str(tranche_id)] + tokens[:zincid_pos-1] + tokens[zincid_pos:]) + "\n")
+                else:
+                    out.write(" ".join([str(sub_id), str(tranche_id)]) + "\n")
 
 existing_patches = ["postgres", "catsub2", "escape", "substanceopt", "renormalize_p1", "renormalize_p2"]
 def patch_patch(db_port, db_path):

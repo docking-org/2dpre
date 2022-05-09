@@ -7,6 +7,10 @@ EXPORT_DEST=${EXPORT_DEST-/nfs/exb/zinc22/2dpre_results/$CATALOG}
 
 BINPATH=$(dirname $0)
 BINPATH=${BINPATH-.}
+pushd $BINPATH
+BINPATH=$PWD
+popd
+
 export BINPATH
 export CATALOG
 
@@ -20,6 +24,10 @@ for tranche_file in $tranche_files; do
     if [[ $tranche_file == MISSING* ]]; then
         hlogp=$(printf $tranche_file | cut -d':' -f2)
         echo $hlogp missing from tranches, no worries
+	intarfile=$(tar tf $EXPORT_DEST/$PARTITION_ID.pre | grep $hlogp)
+	if ! [ -z "$intarfile" ]; then
+		continue
+	fi
         touch $EXPORT_DEST/$hlogp
 	tar -C $EXPORT_DEST -rf $EXPORT_DEST/$PARTITION_ID.pre $hlogp
 	continue
@@ -36,7 +44,16 @@ for tranche_file in $tranche_files; do
         	continue
 	fi
     fi
-    $BINPATH/pre_process_file.bash
-    tar -C $EXPORT_DEST -rf $EXPORT_DEST/$PARTITION_ID.pre $TRANCHE_NAME
+    jobid=$($BINPATH/pre_process_file.bash)
+    JOBS_TO_WAIT_ON="$JOBS_TO_WAIT_ON $jobid"
+    TRANCHES_TO_ADD="$TRANCHES_TO_ADD $TRANCHE_NAME"
+    #tar -C $EXPORT_DEST -rf $EXPORT_DEST/$PARTITION_ID.pre $TRANCHE_NAME
     
 done
+
+echo $JOBS_TO_WAIT_ON
+echo $TRANCHES_TO_ADD
+
+jobdep=$(echo $JOBS_TO_WAIT_ON | tr ' ' ':')
+
+#sbatch --priority=1000000 -o /dev/null -J 2dpre_archive --dependency=afterok:$jobdep $BINPATH/add_files_to_archive.bash "$TRANCHES_TO_ADD" $EXPORT_DEST $PARTITION_ID

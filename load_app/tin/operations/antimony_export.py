@@ -30,7 +30,12 @@ def export_all_from_tin(hostname, port):
         if os.path.exists(dest + ".gz"):
                 print("found an existing full export @ {}. It seems to have completed, if you wish to re-export please delete the file and try again. Be careful!".format(dest + '.gz'))
                 return False
+        elif os.path.exists(dest + ".save"):
+                print("using save file")
+                os.rename(dest + '.save', dest)
+                return split_antimony_partitions(hostname, port, dest, suffix=str(tin_version))
         elif os.path.exists(dest):
+                #split_antimony_partitions(hostname, port, dest, suffix=str(tin_version))
                 print("found an existing full export @ {}. It doesn't seem to have completed, but this process will abort anyhow. If you wish to export delete the file and try again.".format(dest))
                 return False
 
@@ -97,3 +102,4 @@ def split_antimony_partitions(hostname, port, rawfile, suffix=None):
         # a similar process is followed for the split files- once they are uploaded to antimony they are gzipped to indicate they have been uploaded
         # this has the two-fold benefit of creating a marker for progress and reducing the disk footprint of the files
         subprocess.call(["gzip", rawfile])
+        return True

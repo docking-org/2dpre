@@ -10,14 +10,19 @@ from load_app.tin.patches.postgres import *
 from load_app.tin.patches.renormalize import *
 from load_app.tin.patches.substanceopt import *
 from load_app.tin.patches.version import *
+from load_app.tin.patches.fix12 import *
+from load_app.tin.patches.partition import *
+from load_app.tin.patches.zincid import *
 
 from load_app.tin.operations.deplete import deplete as tin_deplete
-from load_app.tin.operations.upload import upload as tin_upload
+from load_app.tin.operations.upload import emulate_upload as tin_upload
+from load_app.tin.operations.upload_zincid import upload_zincid as tin_upload_zincid
 from load_app.tin.operations.upload_legacy import upload_legacy as tin_upload_legacy
-from load_app.tin.operations.antimony_export import export_all_from_tin as export_antimony
+from load_app.tin.operations.antimony_export import export_all_from_tin as export_antimony_from_tin
 #from load_app.tin.apply_config import apply_config
 
 from load_app.antimony.operations.upload import upload_antimony
+import fcntl
 
 if len(sys.argv) == 1:
     print("usages:")
@@ -41,98 +46,155 @@ if len(sys.argv) == 1:
 
 # begin main functionality
 
-chosen_mode = "none" if len(sys.argv) < 3 else sys.argv[2]
 
-nopatch = False
+database_port = int(sys.argv[1])
+chosen_db = sys.argv[2]
+chosen_mode = "none" if len(sys.argv) < 4 else sys.argv[3]
+args = sys.argv[4:]
+
+lockf_location = "/tmp/zinc22_pg_{}.lock".format(database_port)
+if not os.path.exists(lockf_location):
+    os.system("touch {}".format(lockf_location))
+lockf = open(lockf_location, 'r')
+
 try:
-    database_port = sys.argv[1]
-    if database_port.endswith('x') or chosen_mode == "upload_legacy":
-        nopatch = True
-        database_port = database_port[0:4]
-    database_port = int(database_port)
+    fcntl.flock(lockf.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
 except:
-    print("port must be an integer!")
+    print("Process already using database!")
+    lockf.close()
     sys.exit(1)
 
-# keep database config up to date with any changes
-# apply_config(database_port)
+try:
+    lockf_location = "/tmp/zinc22_pg_{}.lock".format(database_port)
+    if not os.path.exists(lockf_location):
+        os.system("touch {}".format(lockf_location))
+    lockf = open(lockf_location, 'r')
 
-dbpath = get_db_path(database_port)
-# make sure patches are hosted on postgres now, rather than on disk
-patch_patch(database_port, dbpath)
-
-# sort of a messy way to do patches (code-wise) but it functions
-print(database_port)
-if not get_patched(database_port, "postgres") and not nopatch:
-    print("this database hasn't received the postgres patch, patching now")
-    if not patch_database_postgres(database_port, dbpath):
-        print("patch failed!")
+    try:
+        fcntl.flock(lockf.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except:
+        print("Process already using database!")
+        lockf.close()
         sys.exit(1)
 
-if not get_patched(database_port, "escape") and not nopatch:
-    print("this database hasn't received the escape characters patch, patching now")
-    if not patch_database_escape(database_port, dbpath):
-        print("patch failed!")
-        sys.exit(1)
+    if chosen_db == "tin":
 
-if not get_patched(database_port, "substanceopt") and not nopatch:
-    print("thie database hasn't received the substance optimization patch! Doing it now...")
-    if not patch_database_substanceopt(database_port):
-        print("patch failed!")
-        sys.exit(1)
+        def checkpatch(port, name, path, callback):
+            if get_patched(port, name):
+                return
+            print("patching: {}".format(name))
+            if not callback(port):
+                print("failed patching: {}".format(name))
+                sys.exit(1)
 
-if not get_patched(database_port, "normalize_p1") and not nopatch:
-    print("this database hasn't received part 1 of the renormalization patch! performing now")
-    if not patch_database_normalize_p1(database_port, dbpath):
-        print("patch failed!")
-        sys.exit(1)
+        dbpath = get_db_path(database_port)
+        # make sure patches are hosted on postgres now, rather than on disk
+        patch_patch(database_port, dbpath)
+        # sort of a messy way to do patches (code-wise) but it functions
+        print(database_port)
 
-if not get_patched(database_port, "normalize_p2") and not nopatch:
-    print("this database hasn't received part 2 of the renormalization patch! performing now")
-    if not patch_database_normalize_p2(database_port, dbpath):
-        print("patch failed!")
-        sys.exit(1)
+        """
+        if not get_patched(database_port, "postgres"):
+            print("this database hasn't received the postgres patch, patching now")
+            if not patch_database_postgres(database_port, dbpath):
+                print("patch failed!")
+                sys.exit(1)
 
-if not get_patched(database_port, "version") and not nopatch:
-    print("adding versioning system to tin!")
-    if not patch_database_version(database_port, dbpath):
-        print("patch failed!")
-        sys.exit(1)
+        if not get_patched(database_port, "escape"):
+            print("this database hasn't received the escape characters patch, patching now")
+            if not patch_database_escape(database_port, dbpath):
+                print("patch failed!")
+                sys.exit(1)
 
-if chosen_mode == "upload":
+        if not get_patched(database_port, "substanceopt"):
+            print("thie database hasn't received the substance optimization patch! Doing it now...")
+            if not patch_database_substanceopt(database_port):
+                print("patch failed!")
+                sys.exit(1)
 
-    source_files = sys.argv[3].split()
-    cat_shortnames = sys.argv[4].split()
+        if not get_patched(database_port, "normalize_p1"):
+            print("this database hasn't received part 1 of the renormalization patch! performing now")
+            if not patch_database_normalize_p1(database_port, dbpath):
+                print("patch failed!")
+                sys.exit(1)
 
-    tin_upload(database_port, source_files, cat_shortnames)
+        if not get_patched(database_port, "normalize_p2"):
+            print("this database hasn't received part 2 of the renormalization patch! performing now")
+            if not patch_database_normalize_p2(database_port, dbpath):
+                print("patch failed!")
+                sys.exit(1)
+        """
 
-# new upload tool for uploading legacy data to new system
-if chosen_mode == "upload_legacy":
+        if not get_patched(database_port, "version"):
+            print("adding versioning system to tin!")
+            if not patch_database_version(database_port, dbpath):
+                print("patch failed!")
+                sys.exit(1)
 
-    partition_number = int(sys.argv[3])
+        #if not get_patched(database_port, "fix12"):
+        #    print("fixing 2d-12 issues")
+        #    if not patch_database_fix12(database_port):
+        #        print("patch failed!")
+        #        sys.exit(1)
 
-    tin_upload_legacy(database_port, partition_number)
+        if not get_patched(database_port, "partition"):
+            print("partitioning database")
+            if not patch_database_partition(database_port):
+                print("patch failed!")
+                sys.exit(1)
 
-if chosen_mode == "deplete":
+        checkpatch(database_port, "zincid", None, patch_database_zincid)
 
-    boolval = True if sys.argv[3].lower() == "true" else False
-    src = sys.argv[4]
+        if chosen_mode == "upload":
 
-    tin_deplete(database_port, boolval, src)
+            source_files = args[0].replace(',', ' ').split()
+            cat_shortnames = args[1].replace(',', ' ').split()
 
-# should work on logically separating tin/antimony operations within the command line arguments
-# e.g tin operations are all prefixed like:
-# 2dload.py [port] tin [operation] [args]
-# similarly with antimony:
-# 2dload.py [port] antimony [operation] [args]
-if chosen_mode == "tin_export_antimony":
+            tin_upload(database_port, source_files, cat_shortnames)
 
-    hostname = os.uname()[1].split(".")[0]
+        if chosen_mode == "upload_zincid":
 
-    antimony_export(hostname, database_port)
+            source_dirs = args[0].split(',')
+            transaction_id = args[1]
+            
+            tin_upload_zincid(database_port, source_dirs, transaction_id)
 
-if chosen_mode == "antimony_upload":
+        # new upload tool for uploading legacy data to new system
+        if chosen_mode == "upload_legacy":
 
-    hostname = os.uname()[1].split(".")[0]
+            partition_number = int(args[0])
 
-    upload_antimony(hostname, database_port)
+            tin_upload_legacy(database_port, partition_number)
+
+        if chosen_mode == "deplete":
+
+            boolval = True if args[0].lower() == "true" else False
+            src = args[1]
+
+            tin_deplete(database_port, boolval, src)
+
+        # should work on logically separating tin/antimony operations within the command line arguments
+        # e.g tin operations are all prefixed like:
+        # 2dload.py [port] tin [operation] [args]
+        # similarly with antimony:
+        # 2dload.py [port] antimony [operation] [args]
+        if chosen_mode == "export_antimony":
+
+            hostname = os.getenv("HOST_OVERRIDE") or os.uname()[1].split(".")[0]
+
+            export_antimony_from_tin(hostname, database_port)
+
+    if chosen_db == "antimony":
+
+        print(database_port)
+
+        if chosen_mode == "upload":
+
+            hostname = os.getenv("HOST_OVERRIDE") or os.uname()[1].split(".")[0]
+
+            upload_antimony(hostname, database_port)
+
+finally:
+    fcntl.flock(lockf.fileno(), fcntl.LOCK_UN)
+    lockf.close()
+
