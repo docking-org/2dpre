@@ -3,8 +3,8 @@ import subprocess
 import tarfile
 import shutil
 
-BINDIR = os.path.dirname(sys.argv[0]) or '.'
-BIG_SCRATCH_DIR = "/local2/load"
+from load_app.common.consts import *
+from load_app.common.database import Database
 
 def get_tranche_id(port, tranchename):
     data = Database.instance.select("select tranche_id from tranches where tranche_name = '{}'".format(tranchename)).first().tranche_id

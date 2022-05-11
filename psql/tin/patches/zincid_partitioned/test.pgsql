@@ -17,7 +17,7 @@ select * from substance_out;
 
 create temporary sequence tq_id_seq;
 create temporary table testq (sub_id bigint, temp_id bigint default nextval('tq_id_seq'));
-insert into testq(sub_id) (select sub_id_fk from catalog_substance_cat_p27 limit 1000);
+insert into testq(sub_id) (select sub_id_fk from catalog_substance_cat_p0 limit 1000);
 create temporary table testout (smiles varchar, sub_id bigint, tranche_id smallint, temp_id bigint);
 
 call get_some_substances_by_id('testq', 'testout');

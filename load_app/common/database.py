@@ -72,7 +72,7 @@ class Database:
         return res.code
 
     def select(self, query, vars={}, exc=False, sp_kwargs={}):
-        p = self.__open_psql_sp(vars, ["-t", "-c", query])
+        p = self.__open_psql_sp(vars, ["-t", "-c", query], sp_kwargs)
 
         res = SelectResult()
         res.__load_from_sp(p)
@@ -84,7 +84,7 @@ class Database:
         return res
 
     def call_file(self, filename, vars={}, echo=True, exc=False, sp_kwargs={}):
-        p = self.__open_psql_sp(vars, ["-f", filename])
+        p = self.__open_psql_sp(vars, ["-f", filename], sp_kwargs)
 
         res = SelectResult()
         res.__code_no_load_from_sp(p, echo=echo)
@@ -96,7 +96,7 @@ class Database:
         return res.code
 
     def select_file(self, filename, vars={}, exc=False, sp_kwargs={}):
-        p = self.__open_psql_sp(vars, ["-t", "-f", filename])
+        p = self.__open_psql_sp(vars, ["-t", "-f", filename], sp_kwargs)
 
         res = SelectResult()
         res.__load_from_sp(p)

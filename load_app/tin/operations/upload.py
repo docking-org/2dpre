@@ -3,6 +3,7 @@ import subprocess
 import tarfile
 import shutil
 
+from load_app.common.consts import *
 from load_app.tin.common import *
 from load_app.common.upload import make_hash_partitions, get_partitions_count, create_transaction_record_table, check_transaction_record, check_transaction_started
 

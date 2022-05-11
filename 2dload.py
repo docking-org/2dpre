@@ -7,8 +7,10 @@ import shutil
 from load_app.tin.operations.upload import emulate_upload as tin_upload
 from load_app.tin.operations.upload_zincid import upload_zincid as tin_upload_zincid
 from load_app.tin.operations.antimony_export import export_all_from_tin as export_antimony_from_tin
-
 from load_app.antimony.operations.upload import upload_antimony
+
+from load_app.common.patch import PatchPatch, UploadPatch
+
 import fcntl
 
 if len(sys.argv) == 1:
@@ -27,8 +29,6 @@ if len(sys.argv) == 1:
     sys.exit(0)
 
 # begin main functionality
-
-
 database_port = int(sys.argv[1])
 chosen_db = sys.argv[2]
 chosen_mode = "none" if len(sys.argv) < 4 else sys.argv[3]

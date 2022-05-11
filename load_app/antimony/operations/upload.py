@@ -1,4 +1,6 @@
-from load_app.antimony.common import BINDIR, call_psql, get_partition_id, antimony_src_dir, antimony_scratch_dir
+from load_app.antimony.common import get_partition_id, antimony_src_dir, antimony_scratch_dir
+from load_app.common.consts import *
+from load_app.common.database import Database
 import subprocess
 import os
 
@@ -19,7 +21,7 @@ def upload_antimony(host, port):
 	source_file.close()
 
 	psqlvars = { "source_f" : source_filename }
-	code = call_psql(port, psqlfile=BINDIR + "/psql/antimony/antimony_upload.pgsql", vars=psqlvars)
+	code = Database.instance.call_file(BINDIR + "/psql/antimony/antimony_upload.pgsql", vars=psqlvars)
 	os.remove(source_filename)
 	if code == 0:
 		subprocess.call(["gzip"] + to_upload)

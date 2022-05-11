@@ -1,4 +1,4 @@
-from load_app.tin.common import Database
+from load_app.common.database import Database
 import sys, os
 
 # Contains Base patch classes as well as all patches that apply to both Tin and Antimony systems
