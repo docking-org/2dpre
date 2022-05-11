@@ -55,7 +55,7 @@ begin;
 
 	$$ language plpgsql;
 
-	create or replace function get_substance_by_id_pfk (sub_id_q bigint) return text as $$
+	create or replace function get_substance_by_id_pfk (sub_id_q bigint) returns text as $$
 		declare 
 			sub text;
 		begin
