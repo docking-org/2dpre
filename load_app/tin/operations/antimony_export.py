@@ -3,9 +3,8 @@ import sys
 import gzip
 import subprocess
 from datetime import datetime
-from load_app.tin.common import BINDIR
-from load_app.tin.common import call_psql as tin_call_psql
-from load_app.tin.common import get_version as tin_get_version
+from load_app.common.consts import BINDIR
+from load_app.common.utils import get_version
 from load_app.antimony.common import antimony_src_dir, antimony_stage_dir, antimony_partition_map, num_digits, get_machine_id
 
 # exporting to antimony is a two-step process
@@ -42,7 +41,7 @@ def export_all_from_tin(hostname, port):
         psqlvars = {
                         "output_file" : dest
         }
-        code = tin_call_psql(port, psqlfile=BINDIR + "/psql/tin_antimony_export.pgsql", vars=psqlvars)
+        code = Database.instance.call_file(BINDIR + "/psql/tin_antimony_export.pgsql", vars=psqlvars)
 
         if code != 0:
                 print("failed!")

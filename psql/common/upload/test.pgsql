@@ -39,7 +39,3 @@ select * from t5;
 select upload_bypart(-1, 't5', 't6', null, '{{"a_id:int"},{"b_id:int"}}', 'ab_id:int', 'ab_seq', null);
 
 select * from t6;
-
-begin;
-
-	create temporary table loadtable_p1

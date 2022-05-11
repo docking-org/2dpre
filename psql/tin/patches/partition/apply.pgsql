@@ -5,6 +5,21 @@ SET client_min_messages to LOG;
 
 begin;
 
+	-- this bit used to be done in python, moving it to postgres
+	delete from meta where svalue = 'n_partitions' or varname = 'n_partitions';
+	insert into meta (values ('n_partitions', 'n_partitions', :n_partitions));
+
+	create table substance_t (like substance including defaults) partition by hash(smiles);
+	create table catalog_content_t (like catalog_content including defaults) partition by hash(supplier_code);
+	create table catalog_substance_t (like catalog_substance including defaults) partition by hash(sub_id_fk);
+	create table catalog_substance_cat_t (like catalog_substance including defaults) partition by hash(cat_content_fk);
+
+	call create_table_partitions('substance_t');
+	call create_table_partitions('catalog_content_t');
+	call create_table_partitions('catalog_substance_t');
+	call create_table_partitions('catalog_substance_cat_t');
+	-- end bit that used to be done in python
+
 	--explain insert into substance_t(smiles, sub_id, tranche_id, date_updated) (select smiles, sub_id, tranche_id, date_updated from substance);
 	insert into substance_t(smiles, sub_id, tranche_id, date_updated) (select smiles, sub_id, tranche_id, date_updated from substance);
 	create index substance_t_smiles_idx on substance_t(smiles); -- indexes will be useful for identifying duplicates & removing them
@@ -50,16 +65,9 @@ begin;
 	drop index catcontent_t_code_idx;
 	alter table catalog_content_t add constraint catalog_content_uniq_code unique(supplier_code);
 	select logg('finished cat dup correction');
-	--explain insert into sub_dups_corrections (select t.sub_id, t.sub_id_min from (select sub_id, min(sub_id) over (partition by smiles) as sub_id_min from substance_t) t where t.sub_id != t.sub_id_min);
-	--insert into sub_dups_corrections (select t.sub_id, t.sub_id_min from (select sub_id, min(sub_id) over (partition by smiles) as sub_id_min from substance_t) t where t.sub_id != t.sub_id_min);
-	--explain insert into cat_dups_corrections (select t.code_id, t.code_id_min from (select cat_content_id as code_id, min(cat_content_id) over (partition by supplier_code) as code_id_min from catalog_content_t) t where t.code_id != t.code_id_min);
-	--insert into cat_dups_corrections (select t.code_id, t.code_id_min from (select cat_content_id as code_id, min(cat_content_id) over (partition by supplier_code) as code_id_min from catalog_content_t) t where t.code_id != t.code_id_min);
-
 	select logg('creating indexes on dup data');
 	create index sdc_sub_id_idx_t on sub_dups_corrections(sub_id_wrong);
 	create index cdc_code_id_idx_t on cat_dups_corrections(code_id_wrong);
-
-	--explain insert into catalog_substance_t(sub_id_fk, cat_content_fk, tranche_id, cat_sub_itm_id) ( select case when sub_id_wrong then sub_id_right else sub_id_fk, case when code_id_wrong then code_id_right else cat_content_fk, tranche_id, cat_sub_itm_id from catalog_substance cs left join sub_dups_corrections sdc on cs.sub_id_fk = sdc.sub_id_wrong left join cat_dups_corrections cdc on cs.cat_content_fk = cdc.code_id_wrong );
 
 	select logg('creating catsub tables');
 	insert into catalog_substance_t(sub_id_fk, cat_content_fk, tranche_id, cat_sub_itm_id) (
@@ -89,28 +97,17 @@ begin;
 	drop table substance cascade;
 	drop table catalog_content cascade;
 	drop table catalog_substance cascade;
-	--alter table substance rename to substance_save_prepartition;
-	--alter table catalog_content rename to catalog_content_save_prepartition;
-	--alter table catalog_substance rename to catalog_substance_save_prepartition;
 
 	alter table substance_t rename to substance;
 	alter table catalog_content_t rename to catalog_content;
 	alter table catalog_substance_t rename to catalog_substance;
 	alter table catalog_substance_cat_t rename to catalog_substance_cat;
 
-	-- catalog_substance gets partitioned by sub_id_fk. duplicate table "catalog_substance_cat" gets partitioned by cat_content_fk
-	-- still naming it catalog_substance for backwards compatibility (so cartblanche keeps working, can optimize for this change later)
-	-- insert into catalog_substance_cat_t (select * from catalog_substance_t);
-
-	--delete from substance_t sb using sub_dups_corrections sdc where sb.sub_id = sdc.sub_id_wrong;
-	--delete from catalog_content_t cc using cat_dups_corrections cdc where cc.cat_content_id = cdc.code_id_wrong;
-
-	/*
-	select count(*) from substance_t;
-	select count(*) from catalog_content_t;
-	select count(*) from catalog_substance_t;
-	*/
-
+	-- this bit also used to be done in python
+	call rename_table_partitions('substance_t', 'substance');
+	call rename_table_partitions('catalog_content_t', 'catalog_content');
+	call rename_table_partitions('catalog_substance_t', 'catalog_substance');
+	call rename_table_partitions('catalog_substance_cat_t', 'catalog_substance_cat');
 
 commit;
 

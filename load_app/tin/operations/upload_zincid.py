@@ -4,42 +4,7 @@ import tarfile
 import shutil
 
 from load_app.tin.common import *
-
-# should move these functions to an "upload_common" file for organizational purposes
-# for now they are like this
-def make_hash_partitions(database_port, table_name, N):
-
-    code = 0
-    for i in range(N):
-        code |= call_psql(database_port, cmd="create table {0}_p{1} partition of {0} for values with (modulus {2}, remainder {1})".format(table_name, i, N))
-        if code != 0:
-            raise NameError("failed to create hash partitions for {}:{}:{}".format(database_port, table_name, N))
-            return False
-    return True
-
-def get_partitions_count(database_port):
-    n_partitions = int(call_psql(database_port, cmd="select ivalue from tin_meta where svalue = 'n_partitions' limit 1", getdata=True)[1][0])
-    return n_partitions
-
-def create_transaction_record_table(database_port, transaction_identifier):
-
-    code = call_psql(database_port, cmd="create table if not exists transaction_record_{} (stagei int, parti int, nupload int, nnew int)".format(transaction_identifier))
-    code |= call_psql(database_port, cmd="insert into transaction_record_{} (values (-1, -1, 0, 0))".format(transaction_identifier))
-
-    if code == 0:
-        return True
-    return False
-
-def check_transaction_record(database_port, transaction_identifier, stagei, parti):
-
-    data = call_psql(database_port, cmd="select * from transaction_record_{} where parti = {} and stagei = {}".format(transaction_identifier, parti, stagei), getdata=True)
-
-    if len(data) > 1:
-        return True
-    return False
-
-def check_transaction_started(database_port, transaction_identifier):
-    return check_transaction_record(database_port, transaction_identifier, -1, -1)
+from load_app.common.upload import make_hash_partitions, get_partitions_count, create_transaction_record_table, check_transaction_record, check_transaction_started
 
 def create_source_file(database_port, source_dirs, transaction_id):
 
@@ -70,7 +35,7 @@ def create_source_file(database_port, source_dirs, transaction_id):
 def upload_source_f(source_f):
     psql_source_f = open(source_f, 'r')
 
-    code = call_psql(database_port, "COPY temp_load_p1 FROM STDIN DELIMITER ' '", stdin=psql_source_f)
+    code = Database.instance.call("COPY temp_load_p1 FROM STDIN DELIMITER ' '", sp_kwargs={"stdin":psql_source_f})
     if code != 0:
         return False
     return True
@@ -100,6 +65,7 @@ def upload_zincid(database_port, source_dirs, transaction_id):
         psqlvars["case{}".format(i)] = tmpdir + '/' + "case{}".format(i)
 
     # i fucked up and deployed a version of this procedure with errors, so now I have to roll them back once
+    # will delete this section once the mistake has been eradicated
     if not get_patched(database_port, 'whoops1'):
         if not os.path.exists(tmpdir):
             set_patched(database_port, 'whoops1', True)
@@ -107,17 +73,17 @@ def upload_zincid(database_port, source_dirs, transaction_id):
             if not os.path.exists(new_substances_f) or not os.path.exists(deleted_substances_f) or not os.path.exists(substance_conflict_f):
                 code = 0
             else:
-                code = call_psql(database_port, vars=psqlvars, psqlfile=BINDIR + "/psql/fix_crappy_mistake_onetime.pgsql")
+                code = Databse.instance.call_file(BINDIR + '/psql/fix_crappy_mistake_onetime.pgsql', vars=psqlvars)
             if code == 0:
                 set_patched(database_port, 'whoops1', True)
-                call_psql(database_port, cmd="delete from tin_meta where varname = 'upload_name' and svalue = '{}'".format(transaction_id))
+                Database.instance.call("delete from meta where varname = 'upload_name' and svalue = '{}'".format(transaction_id))
             else:
                 raise NameError("unable to fix whoops1!")
 
     os.system("mkdir -p {}".format(tmpdir))
     os.system("chmod 777 {}".format(tmpdir))
 
-    code = call_psql(database_port, vars=psqlvars, psqlfile=BINDIR + "/psql/tin_partitioned_zincid_upload.pgsql")
+    code = Database.instance.call_file(BINDIR + "/psql/tin_partitioned_zincid_upload.pgsql", vars=psqlvars)
 
     if code == 0:
         increment_version(database_port, transaction_id)

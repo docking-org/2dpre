@@ -8,30 +8,11 @@ for the substance table, this is the smiles key
 for the catalog_content, this is the supplier_code key
 for catalog_substance, this is both sub_id_fk and cat_content_fk (we have two copies of this table)
 
-each partition has a write lock independent from its parent table
-so in theory, we could parallelize insert operations on these tables
-when we do a big select/insert query from some input data on one of these tables, postgres is not smart enough to partition the input data and execute a parallel query, instead opting for a sequential scan
-
-for example:
-	select * from substance sb, temp_data td where td.smiles = sb.smiles
-
-in a perfect world, this *should* result in a query plan like so:
-	partition temp_data
-	parallel scan on
-		substance_p0 against temp_data_p0
-		substance_p1 against temp_data_p1
-		substance_p2 against temp_data_p2
-		...
-instead, we get a terrible plan like this:
-	hash temp_data
-	sequential scan on
-		substance_p0 against temp_data
-		substance_p1 against temp_data
-		substance_p2 against temp_data
-		...
-the code below is an attempt to *force* postgres to do the optimal query plan
-also, I've learned that indexes aren't useful during a big upload, since it is apparently easier to do a full scan than to check against index
-disappointing, since I figured building an index was like sorting the table based on a key, making it faster to look up no matter what
+the reason why this is done is to force postgres to do a ""hash join"" plan, which for huge data like ours is the preferred behaviour
+on huge select queries, for example joining one huge table with another, postgres is happy to plan a hash join
+however for some reason, on insert/update queries, postgres will almost always *refuse* to execute a hash join plan, instead opting for a merge sort or the like
+our hash partitions function like hash buckets that would be created during the hash join plan, allowing us to perform our own "hash join" during an insert/update query
+it's sort of crappy, but has definitely improved performance!
 */
 
 LOAD 'auto_explain';
@@ -45,24 +26,34 @@ begin;
 	/*
 	create table temp_load_p1 ( -- raw data, smiles+code
 		smiles varchar,
-		code varchar,
+		supplier_code varchar,
 		tranche_id smallint,
 		cat_id smallint
 	) partition by hash (smiles);
 
 	create table temp_load_p2 ( -- processed data 1, smiles id+code
 		sub_id bigint,
-		code varchar,
+		supplier_code varchar,
 		tranche_id smallint,
 		cat_id smallint
 	) partition by hash (code);
 
 	create table temp_load_p3 ( -- processed data 2, smiles id+code id
 		sub_id bigint,
-		code_id bigint,
+		cat_content_id bigint,
 		tranche_id smallint
 	) partition by hash (sub_id)
 
+	*/
+
+	/*
+	call upload_bypart(partition_idx, 'temp_load_p1', 'substance', 'temp_load_p2', '{{"smiles:text"}}', 'sub_id:bigint', 'sub_id_seq', sub_diff_file);
+
+	call upload_bypart(partition_idx, 'temp_load_p2', 'catalog_content', 'temp_load_p3', '{{"supplier_code:text"}}', 'cat_content_id:bigint', 'cat_content_id_seq', cat_diff_file);
+	-- on python side, once everything has finished for p2:
+	-- alter table temp_load_p3 alter column sub_id rename to sub_id_fk
+	-- alter table temp_load_p3 alter column cat_content_id rename to cat_content_fk
+	call upload_bypart(partition_idx, 'temp_load_p3', 'catalog_substance', null, '{{"sub_id_fk:bigint"},{"cat_content_fk:bigint"}}', 'cat_sub_itm_id:bigint', 'cat_sub_itm_id_seq', catsub_diff_file)
 	*/
 
 	create or replace function upload_substance_bypart(part int, transid text) returns int as $$

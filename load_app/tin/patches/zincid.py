@@ -1,14 +1,10 @@
-from load_app.tin.common import *
+from load_app.common.consts import BINDIR
+from load_app.common.patches import StagedPatch
 
-def patch_database_zincid(port):
+class ZincIdPartitionPatch(StagedPatch):
 
-    code = call_psql(port, psqlfile=BINDIR+"/psql/tin_partitioned_zincid_patch.pgsql")
-
-    if code == 0:
-        set_patched(port, 'zincid', True)
-        return True
-    return False
-
-def patch_database_catid(port):
-
-    code = call_psql(port, psqlfile=BINDIR+"/psql/tin/patches/catid_partitioned/code.pgsql")
+	def __init__(self):
+		super().__init__('zincid', BINDIR + '/psql/tin/patches/zincid_partitioned')
+		self.patch_stages.append('code', {})
+		self.patch_stages.append('apply', {})
+        self.patch_stages.append('test', {})
