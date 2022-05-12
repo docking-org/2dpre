@@ -3,34 +3,35 @@ import subprocess
 class SelectRow:
     def __init__(self, header, data):
         for h, d in zip(header, data):
-            self.setattr(self, h, d)
+            setattr(self, h, d)
 
 class SelectResult:
     def __init__(self):
         pass
 
-    def __code_no_load_from_sp(self, sp, echo=True):
+    def _code_no_load_from_sp(self, sp, echo=True):
         data = sp.stdout.read().decode('utf-8')
         if echo:
             for l in data.split("\n"):
                 print(l)
         if "ROLLBACK" in data:
-            p.wait()
+            sp.wait()
             self.code = 1
         else:
-            self.code = p.wait()
+            self.code = sp.wait()
 
-    def __load_from_sp(self, sp):
+    def _load_from_sp(self, sp):
         self.data = []
         code = 0
         first = True
         for line in sp.stdout:
-            if first:
-                self.header_info = sp.stdout.readline().split(',')
-                first = False
             line = line.decode('utf-8')
+            if first:
+                self.header_info = line.split(',')
+                first = False
+                continue
             self.data.append(SelectRow(self.header_info, line.split(',')))
-        ecode = p.wait()
+        ecode = sp.wait()
         if code == 0 and not ecode == code:
             code = ecode
         self.code = code
@@ -45,6 +46,9 @@ class SelectResult:
         return self.data
 
 class Database:
+
+    def __init__(self):
+        pass
 
     def __init__(self, host, port, user, db):
         self.host = host
@@ -63,53 +67,56 @@ class Database:
         p = self.__open_psql_sp(vars, ["-c", query], sp_kwargs)
 
         res = SelectResult()
-        res.__code_no_load_from_sp(p, echo=echo, stdin=stdin)
-        if exc:
-            if res.code:
-                return res.code
-            else:
-                raise Exception(f"database exception code={res.code} query={query}")
+        res._code_no_load_from_sp(p, echo=echo)
+        if not exc:
+            return res.code
+        elif res.code == 0:
+            return 0
+        else:
+            raise Exception(f"database exception code={res.code} query={query}")
         return res.code
 
     def select(self, query, vars={}, exc=False, sp_kwargs={}):
         p = self.__open_psql_sp(vars, ["-t", "-c", query], sp_kwargs)
 
         res = SelectResult()
-        res.__load_from_sp(p)
-        if exc:
-            if res.code:
-                return res.code
-            else:
-                raise Exception(f"database exception code={res.code} query={query}")
+        res._load_from_sp(p)
+        if not exc:
+            return res
+        elif res.code == 0:
+            return res
+        else:
+            raise Exception(f"database exception code={res.code} query={query}")
         return res
 
     def call_file(self, filename, vars={}, echo=True, exc=False, sp_kwargs={}):
         p = self.__open_psql_sp(vars, ["-f", filename], sp_kwargs)
 
         res = SelectResult()
-        res.__code_no_load_from_sp(p, echo=echo)
-        if exc:
-            if res.code:
-                return res.code
-            else:
-                raise Exception(f"database exception code={res.code} file={filename}")
+        res._code_no_load_from_sp(p, echo=echo)
+        if not exc:
+            return res.code
+        elif res.code == 0:
+            return 0
+        else:
+            raise Exception(f"database exception code={res.code} query={query}")
         return res.code
 
     def select_file(self, filename, vars={}, exc=False, sp_kwargs={}):
         p = self.__open_psql_sp(vars, ["-t", "-f", filename], sp_kwargs)
 
         res = SelectResult()
-        res.__load_from_sp(p)
-        if exc:
-            if res.code:
-                return res.code
-            else:
-                raise Exception(f"database exception code={res.code} file={filename}")
+        res._load_from_sp(p)
+        if not exc:
+            return res
+        elif res.code == 0:
+            return res
+        else:
+            raise Exception(f"database exception code={res.code} query={query}")
         return res
 
-    instance = Database(None, None, None, None)
-
     def set_instance(host, port, user, db):
+        setattr(Database, 'instance', Database(None, None, None, None))
         Database.instance.host = host
         Database.instance.port = port
         Database.instance.user = user

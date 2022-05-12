@@ -13,6 +13,8 @@ antimony_src_dir = "/nfs/exh/zinc22/antimony/src"
 antimony_stage_dir = "/nfs/exh/zinc22/antimony/stage"
 
 common_db = Database('n-1-17', 5534, 'zincuser', 'zinc22_common')
+antimony_machine_partition_map = {}
+antimony_partition_map = {}
 
 with open(BINDIR + "/load_app/antimony/machine_partition_map.txt") as pmapf:
     for line in pmapf:

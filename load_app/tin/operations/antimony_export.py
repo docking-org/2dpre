@@ -5,7 +5,7 @@ import subprocess
 
 from datetime import datetime
 from load_app.common.consts import *
-from load_app.common.utils import get_version
+from load_app.common.upload import get_version
 from load_app.antimony.common import antimony_src_dir, antimony_stage_dir, antimony_partition_map, num_digits, get_machine_id
 
 # exporting to antimony is a two-step process

@@ -9,7 +9,13 @@ from load_app.tin.operations.upload_zincid import upload_zincid as tin_upload_zi
 from load_app.tin.operations.antimony_export import export_all_from_tin as export_antimony_from_tin
 from load_app.antimony.operations.upload import upload_antimony
 
+from load_app.tin.patches.partition import TinPartitionPatch
+from load_app.tin.patches.catid import CatIdPartitionPatch
+from load_app.tin.patches.zincid import ZincIdPartitionPatch
+
 from load_app.common.patch import PatchPatch, UploadPatch
+from load_app.common.database import Database
+
 
 import fcntl
 
@@ -46,6 +52,15 @@ except:
     print("Process already using database!")
     lockf.close()
     sys.exit(1)
+
+def checkpatch(patchcls):
+    patchobj = patchcls()
+    if patchobj.is_patched():
+        return
+    else:
+        print("patching: {}".format(patchcls.__name__))
+        patchobj.apply()
+        print("done patching: {}".format(patchcls.__name__))
 
 try:
     lockf_location = "/tmp/zinc22_pg_{}.lock".format(database_port)

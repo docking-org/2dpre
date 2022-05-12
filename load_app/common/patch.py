@@ -1,4 +1,5 @@
 from load_app.common.database import Database
+from load_app.common.consts import *
 import sys, os
 
 # Contains Base patch classes as well as all patches that apply to both Tin and Antimony systems
@@ -16,28 +17,27 @@ class Patch(metaclass=Singleton):
 	def __init__(self, name):
 		self.name = name
 
-	@staticmethod
 	def get_patch_attribute(patchname):
-		res, retcode = Database.instance.select("select patched from patches where patchname = '{}'".format(patchname))
-		if retcode == 0:
+		res = Database.instance.select("select patched from patches where patchname = '{}'".format(patchname))
+		if res.code == 0:
 			if res.empty():
 				return False
 			else:
 				return True if res.first().patched == 't' else False
 		return False
 
-	@staticmethod
 	def set_patch_attribute(patchname, patchvalue):
 		patchvalue_psqlstr = 'true' if patchvalue else 'false'
-		if Database.instance.call("update patches set patched = {} where patchname = '{}'".format(patchvalue_psqlstr, patchname)) != 0:
+		res = Database.instance.select("update patches set patched = {} where patchname = '{}' returning *".format(patchvalue_psqlstr, patchname))
+		if res.empty():
 			Database.instance.call("insert into patches (values ('{}', {}))".format(patchname, patchvalue_psqlstr))
 
 	def is_patched(self, suffix=''):
-		name = '_'.join(self.name, suffix)
+		name = '_'.join([self.name, suffix])
 		return Patch.get_patch_attribute(name)
 
 	def set_patched(self, value, suffix=''):
-		name = '_'.join(self.name, suffix)
+		name = '_'.join([self.name, suffix])
 		Patch.set_patch_attribute(name, value)
 
 class PatchPatch(Patch):
@@ -50,27 +50,18 @@ class PatchPatch(Patch):
 			return
 
 		if not self.is_patched(suffix='patchtable'):
-			try:
-				Database.instance.call("create table if not exists patches (patchname text, patched boolean) as (values ('patch', true))", exc=True)
-				self.set_patched(True, suffix='patchtable')
-			except:
-				sys.stderr.write("encountered exception when creating patch table\n")
-				raise
+			code = Database.instance.call("create table if not exists patches (patchname text, patched boolean)")
+			self.set_patched(True, suffix='patchtable')
 
-		if not self.is_patched(suffix='meta')
-			try:
-				Database.instance.call("alter table if exists tin_meta rename to meta")# fix tin meta table name else create the meta table
-				Database.instance.call("create table if not exists meta (varname text, svalue text, ivalue bigint", exc=True)
+		if not self.is_patched(suffix='meta'):
+			Database.instance.call("alter table if exists tin_meta rename to meta")# fix tin meta table name else create the meta table
+			code = Database.instance.call("create table meta (varname text, svalue text, ivalue bigint)")
+			if code == 0:
 				Database.instance.call("insert into meta(varname, ivalue) values ('version', 0)", exc=True)
 				Database.instance.call("insert into meta(varname, ivalue, svalue) values ('upload_name', 0, null)", exc=True)
-				self.set_patched(True, suffix='metatable')
-			except:
-				sys.stderr.write("encountered exception when creating meta table\n")
-				raise
+			self.set_patched(True, suffix='metatable')
 
 		self.set_patched(True)
-
-	instance = PatchPatch()
 
 class StagedPatch(Patch):
 

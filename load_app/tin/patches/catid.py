@@ -1,4 +1,5 @@
 from load_app.common.consts import *
+from load_app.common.patch import StagedPatch
 class CatIdPartitionPatch(StagedPatch):
 
     def __init__(self):

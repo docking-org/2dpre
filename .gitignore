@@ -4,3 +4,6 @@ test
 utils-2d/zinc22_stats/statistics
 utils-2d/tin/slurmlogs
 utils-2d/antimony/logs
+
+**/__pycache__/
+*.pyc
