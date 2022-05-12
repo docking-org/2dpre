@@ -33,17 +33,22 @@ class Patch(metaclass=Singleton):
 			Database.instance.call("insert into patches (values ('{}', {}))".format(patchname, patchvalue_psqlstr))
 
 	def is_patched(self, suffix=''):
-		name = '_'.join([self.name, suffix])
+		name = '_'.join([self.name] + [suffix] if suffix else [])
 		return Patch.get_patch_attribute(name)
 
 	def set_patched(self, value, suffix=''):
-		name = '_'.join([self.name, suffix])
+		name = '_'.join([self.name] + [suffix] if suffix else [])
 		Patch.set_patch_attribute(name, value)
 
 class PatchPatch(Patch):
 
 	def __init__(self):
 		super().__init__('patch')
+
+	def is_patched(self, suffix=''):
+		if suffix:
+			return super().is_patched(suffix=suffix)
+		return super().is_patched(suffix='patchtable') and super().is_patched(suffix='meta')
 
 	def apply(self, verbose=False):
 		if self.is_patched():
@@ -61,14 +66,20 @@ class PatchPatch(Patch):
 				Database.instance.call("insert into meta(varname, ivalue, svalue) values ('upload_name', 0, null)", exc=True)
 			self.set_patched(True, suffix='metatable')
 
-		self.set_patched(True)
-
 class StagedPatch(Patch):
 
 	def __init__(self, name, codepath):
 		super().__init__(name)
 		self.codepath = codepath
 		self.patch_stages = []
+
+	def is_patched(self, suffix=''):
+		if suffix:
+			return super().is_patched(suffix=stage_name)
+		patched = True
+		for stage_name, var_args in patch_stages:
+			patched = patched and super().is_patched(suffix=stage_name)
+		return patched
 
 	def apply(self, verbose=False):
 		if self.is_patched():
