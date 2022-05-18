@@ -41,7 +41,10 @@ def upload_source_f(source_f):
         return False
     return True
 
-def upload_zincid(database_port, source_dirs, transaction_id):
+def upload_zincid(args):
+    database_port = args.port
+    source_dirs = args.source_dirs
+    transaction_id = args.transaction_id
 
     if upload_complete(database_port, transaction_id):
         print("this upload transaction has already completed!")

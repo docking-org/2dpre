@@ -6,8 +6,8 @@ import os, sys, subprocess
 def export_vendors(destination):
 
 	export_tmp_dest = BIG_SCRATCH_DIR + "/export_{}_{}".format(Database.instance.host, Database.instance.port)
-	export_raw_dest = export_tmp_dest + "/raw"
-	export_raw_split_dest = export_tmp_dest + "/split"
+	export_raw_dest = export_tmp_dest + "/raw_vendors"
+	export_raw_split_dest = export_tmp_dest + "/split_vendors"
 
 	subprocess.call(["mkdir", "-p", export_raw_split_dest])
 	subprocess.call(["chmod", "777", export_tmp_dest])
@@ -28,3 +28,6 @@ def export_vendors(destination):
 		final_out.close()
 		os.remove(dstfile + '.t')
 		subprocess.call(["gzip", dstfile])
+
+	os.remove(export_raw_dest)
+	shutil.rmtree(export_raw_split_dest)

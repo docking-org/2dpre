@@ -16,7 +16,10 @@ from load_app.antimony.common import antimony_src_dir, antimony_stage_dir, antim
 # 
 # the second step is to sort the exported supplier codes from the database into their respective buckets
 # the split files will serve as the raw files to be uploaded to antimony partitions
-def export_all_from_tin(hostname, port):
+def export_all_from_tin():
+
+        hostname = Database.instance.host
+        port = Database.instance.port
 
         #hostname = os.uname()[1]
         machine_stage_dir = antimony_stage_dir + "/" + hostname + "_" + str(port)

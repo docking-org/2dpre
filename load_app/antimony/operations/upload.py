@@ -4,7 +4,9 @@ from load_app.common.database import Database
 import subprocess
 import os
 
-def upload_antimony(host, port):
+def upload_antimony(args):
+	host = Database.instance.host
+	port = Database.instance.port
 
 	pid = get_partition_id(host, port)
 

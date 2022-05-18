@@ -77,7 +77,9 @@ def upload_partitioned(stage, partition_index, transaction_identifier):
     else:
         raise NameError("upload step failed @ {},{}".format(3, partition_index))
 
-def emulate_upload(source_dirs, cat_shortnames):
+def emulate_upload(args):
+    source_dirs = args.source_dirs
+    cat_shortnames = args.catalogs
 
     transaction_identifier = "_".join(cat_shortnames)
     
