@@ -37,7 +37,7 @@ begin
 	limit 1 into n_partitions;
 	for i in 0.. (n_partitions - 1)
 	loop
-		execute (format('alter table %s_p%s rename to %s_p%s', tabname, i, desiredname, i));
+		execute (format('alter table if exists %s_p%s rename to %s_p%s', tabname, i, desiredname, i));
 	end loop;
 end;
 $$;

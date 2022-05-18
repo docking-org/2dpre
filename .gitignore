@@ -7,3 +7,4 @@ utils-2d/antimony/logs
 
 **/__pycache__/
 *.pyc
+**/.*

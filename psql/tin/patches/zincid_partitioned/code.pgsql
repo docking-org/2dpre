@@ -49,6 +49,12 @@ begin;
 			sub text;
 		begin
 			select sub_partition_fk from substance_id sbid where sbid.sub_id = sub_id_q into part_id;
+			if part_id is null then
+				raise info '%', sub_id_q;
+				select sub_id_right from sub_dups_corrections where sub_id_wrong = sub_id_q into sub_id_q;
+				select sub_partition_fk from substance_id sbid where sbid.sub_id = sub_id_q into part_id;
+				raise info '% %', sub_id_q, part_id;
+			end if;
 			execute(format('select smiles from substance_p%s where sub_id = %s', part_id, sub_id_q)) into sub;
 			return sub;
 		end;
@@ -98,6 +104,9 @@ begin;
 	$$ language plpgsql;
 
 	-- procedure to force data locality for large lookups by sub_id
+	-- turns out I can use compiiler hints like /* USE_HASH(a) */ to force hash joins
+	-- wish I had known that before I ripped the whole system up
+	-- still, there are advantages to this partitioning strategy. For one, it allows incremental progress on the upload, and easier maintenance of indexes etc.
 	create or replace procedure get_many_substances_by_id (sub_id_input_tabname text, substance_output_tabname text, extra_field text) as $$
 
 		declare 

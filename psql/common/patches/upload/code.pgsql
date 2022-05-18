@@ -6,8 +6,8 @@ DECLARE
 BEGIN
 	RAISE info '%', excl2;
 	RAISE info '%', 'a' = ANY (excl2);
-	SELECT
-		INTO shared_cols array_agg(concat(t1.col, ':', t1.dtype))
+	SELECT INTO shared_cols 
+		array_agg(concat(t1.col, ':', t1.dtype))
 	FROM (
 		SELECT
 			attname::text AS col,
@@ -25,10 +25,14 @@ BEGIN
 			pg_attribute
 		WHERE
 			attrelid = tab2::regclass
-			AND attnum > 0) t2 ON t1.col = t2.col
-WHERE
-	t1.col != excl1
+			AND attnum > 0) t2 
+	ON t1.col = t2.col
+	WHERE
+		t1.col != sc_colname(excl1)
 		AND NOT t1.col = ANY (excl2);
+	RAISE info '%', shared_cols;
+	RAISE info '%', excl1;
+
 	RETURN shared_cols;
 END;
 $$
@@ -70,6 +74,22 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION cols_declare_type (cols text[])
+	RETURNS text
+	AS $$
+DECLARE
+	coldecl text[];
+BEGIN
+	SELECT
+		INTO coldecl array_agg(replace(t.col, ':', ' '))
+	FROM
+		unnest(cols) as t (col);
+	RETURN array_to_string(coldecl, ', ');
+END;
+$$
+LANGUAGE plpgsql;
+
 
 CREATE OR REPLACE FUNCTION cols_declare_join (cols text[], t1 text, t2 text)
 	RETURNS text

@@ -1,10 +1,5 @@
 import subprocess
 
-class SelectRow:
-    def __init__(self, header, data):
-        for h, d in zip(header, data):
-            setattr(self, h, d)
-
 class SelectResult:
     def __init__(self):
         pass
@@ -24,13 +19,9 @@ class SelectResult:
         self.data = []
         code = 0
         first = True
-        for line in sp.stdout:
-            line = line.decode('utf-8')
-            if first:
-                self.header_info = line.split(',')
-                first = False
-                continue
-            self.data.append(SelectRow(self.header_info, line.split(',')))
+        for line in sp.stdout.read().decode('utf-8').split('\n'):
+            if line == '': continue
+            self.data.append(line.split(','))
         ecode = sp.wait()
         if code == 0 and not ecode == code:
             code = ecode
@@ -99,7 +90,7 @@ class Database:
         elif res.code == 0:
             return 0
         else:
-            raise Exception(f"database exception code={res.code} query={query}")
+            raise Exception(f"database exception code={res.code} file={filename}")
         return res.code
 
     def select_file(self, filename, vars={}, exc=False, sp_kwargs={}):
@@ -112,7 +103,7 @@ class Database:
         elif res.code == 0:
             return res
         else:
-            raise Exception(f"database exception code={res.code} query={query}")
+            raise Exception(f"database exception code={res.code} file={filename}")
         return res
 
     def set_instance(host, port, user, db):

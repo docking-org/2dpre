@@ -34,4 +34,4 @@ def get_machine_id(host, port):
     if res.empty():
         raise NameError("machine id not found!")
     else:
-        return int(res.first().machine_id)
+        return int(res.first()[0])

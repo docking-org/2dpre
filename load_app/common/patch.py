@@ -23,13 +23,14 @@ class Patch(metaclass=Singleton):
 			if res.empty():
 				return False
 			else:
-				return True if res.first().patched == 't' else False
+				return True if res.first()[0] == 't' else False
 		return False
 
 	def set_patch_attribute(patchname, patchvalue):
 		patchvalue_psqlstr = 'true' if patchvalue else 'false'
 		res = Database.instance.select("update patches set patched = {} where patchname = '{}' returning *".format(patchvalue_psqlstr, patchname))
-		if res.empty():
+		print(res, res.data)
+		if len(res.data) <= 1: # for some f**king reason, UPDATE 0 still gets echoed in "tuples only" mode, so account for that
 			Database.instance.call("insert into patches (values ('{}', {}))".format(patchname, patchvalue_psqlstr))
 
 	def is_patched(self, suffix=''):
@@ -46,7 +47,7 @@ class PatchPatch(Patch):
 		super().__init__('patch')
 
 	def is_patched(self, suffix=''):
-		if suffix:
+		if suffix != '':
 			return super().is_patched(suffix=suffix)
 		return super().is_patched(suffix='patchtable') and super().is_patched(suffix='meta')
 
@@ -64,7 +65,7 @@ class PatchPatch(Patch):
 			if code == 0:
 				Database.instance.call("insert into meta(varname, ivalue) values ('version', 0)", exc=True)
 				Database.instance.call("insert into meta(varname, ivalue, svalue) values ('upload_name', 0, null)", exc=True)
-			self.set_patched(True, suffix='metatable')
+			self.set_patched(True, suffix='meta')
 
 class StagedPatch(Patch):
 
@@ -75,9 +76,9 @@ class StagedPatch(Patch):
 
 	def is_patched(self, suffix=''):
 		if suffix:
-			return super().is_patched(suffix=stage_name)
+			return super().is_patched(suffix=suffix)
 		patched = True
-		for stage_name, var_args in patch_stages:
+		for stage_name, var_args in self.patch_stages:
 			patched = patched and super().is_patched(suffix=stage_name)
 		return patched
 
@@ -96,8 +97,6 @@ class StagedPatch(Patch):
 					sys.stderr.write(f"failed {self.name} patch @ stage={stage_name}\n")
 					raise
 				self.set_patched(True, suffix=stage_name)
-
-		self.set_patched(True)
 
 class UploadPatch(StagedPatch):
 

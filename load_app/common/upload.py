@@ -13,8 +13,8 @@ def make_hash_partitions(table_name, N):
     return True
 
 def get_partitions_count(database_port):
-    n_partitions = int(call_psql(cmd="select ivalue from meta where svalue = 'n_partitions' limit 1", getdata=True)[1][0])
-    return n_partitions
+    n_partitions = Database.instance.select("select ivalue from meta where svalue = 'n_partitions' limit 1").first()[0]
+    return int(n_partitions)
 
 def create_transaction_record_table(transaction_identifier):
 
@@ -51,5 +51,5 @@ def increment_version(db_port, uploadname):
     Database.instance.call("insert into meta(varname, svalue, ivalue) (values ('upload_name', '{}', {}))".format(uploadname, version_no))
 
 def get_version():
-    data = Database.instance.select("select ivalue from meta where varname = 'version'").first().ivalue
+    data = Database.instance.select("select ivalue from meta where varname = 'version'").first()[0]
     return int(data)

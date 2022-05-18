@@ -65,22 +65,6 @@ def upload_zincid(database_port, source_dirs, transaction_id):
     for i in range(1, 7):
         psqlvars["case{}".format(i)] = tmpdir + '/' + "case{}".format(i)
 
-    # i fucked up and deployed a version of this procedure with errors, so now I have to roll them back once
-    # will delete this section once the mistake has been eradicated
-    if not get_patched(database_port, 'whoops1'):
-        if not os.path.exists(tmpdir):
-            set_patched(database_port, 'whoops1', True)
-        else:
-            if not os.path.exists(new_substances_f) or not os.path.exists(deleted_substances_f) or not os.path.exists(substance_conflict_f):
-                code = 0
-            else:
-                code = Databse.instance.call_file(BINDIR + '/psql/fix_crappy_mistake_onetime.pgsql', vars=psqlvars)
-            if code == 0:
-                set_patched(database_port, 'whoops1', True)
-                Database.instance.call("delete from meta where varname = 'upload_name' and svalue = '{}'".format(transaction_id))
-            else:
-                raise NameError("unable to fix whoops1!")
-
     os.system("mkdir -p {}".format(tmpdir))
     os.system("chmod 777 {}".format(tmpdir))
 
