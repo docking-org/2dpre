@@ -6,7 +6,7 @@ import shutil
 from load_app.common.consts import *
 from load_app.common.database import Database
 
-def get_tranche_id(port, tranchename):
+def get_tranche_id(tranchename):
     data = Database.instance.select("select tranche_id from tranches where tranche_name = '{}'".format(tranchename)).first()[0]
     return int(data)
 
@@ -29,7 +29,7 @@ def get_db_path(db_port):
                     db_path = ppath
     return db_path
 
-def get_or_set_catid(database_port, cat_shortname):
+def get_or_set_catid(cat_shortname):
     data_catid = Database.instance.select("select cat_id from catalog where short_name = '{}'".format(cat_shortname))
     if data_catid.empty():
         data_catid = Database.instance.select("insert into catalog(name, short_name, updated) values ('{}','{}', 'now()') returning cat_id".format(cat_shortname, cat_shortname))

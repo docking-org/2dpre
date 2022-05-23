@@ -18,7 +18,7 @@ from load_app.tin.patches.export import ExportPatch
 
 from load_app.common.patch import PatchPatch, UploadPatch
 from load_app.common.database import Database
-
+from load_app.common.upload import upload_complete
 
 import fcntl
 
@@ -41,7 +41,9 @@ def checktinpatches(args):
     checkpatch(CatIdPartitionPatch)
     checkpatch(ExportPatch)
 def checktinuptodate(args):
-    pass
+    latestpatched = upload_complete('zinc1to8')
+    if not latestpatched:
+        raise Exception("database not up to date!") 
 
 def checksbpatches(args):
     checkpatch(PatchPatch)
@@ -71,7 +73,7 @@ parser_main.add_argument("port", type=int, help="database port to connect @")
 # we want the host's "short" name, so remove the .cluster.bkslab etc..
 thishost = os.uname()[1].split(".")[0]
 parser_main.add_argument("--host", type=str, help="machine hostname", default=thishost)
-parser_main.set_defaults(func=lambda args: None)
+#parser_main.set_defaults(func=lambda args: None)
 
 system_subparser = parser_main.add_subparsers(title="subsystem", help="choose a subsystem")
 
@@ -84,8 +86,9 @@ tin_patch_parser = tin_ops_subparser.add_parser("patch", help="just patch databa
 tin_patch_parser.set_defaults(func=wrpfnc(checktinpatches, checktinuptodate))
 
 tin_upload_parser = tin_ops_subparser.add_parser("upload", help="upload pre-processed vendor data to database")
-tin_upload_parser.add_argument("source_dirs", nargs="+", help="directory(s) where tranche split & preprocessed files are stored")
-tin_upload_parser.add_argument("catalogs", nargs="+", help="name(s) of catalogs being uploaded, each corresponding to a source directory at the same position within the argument list")
+tin_upload_parser.add_argument("--source_dirs", nargs="+", required=True, help="directory(s) where tranche split & preprocessed files are stored")
+tin_upload_parser.add_argument("--catalogs", nargs="+", required=True, help="name(s) of catalogs being uploaded, each corresponding to a source directory at the same position within the argument list")
+tin_upload_parser.add_argument("--diff_destination", required=True, help="where to export the database diff from this upload to")
 tin_upload_parser.set_defaults(func=wrpfnc(checktinpatches, checktinuptodate, tin_upload))
 
 tin_upload_zincid_parser = tin_ops_subparser.add_parser("upload_zincid", help="upload existing zinc id annotated molecules to database, replacing existing ones or adding aliases where appropriate")

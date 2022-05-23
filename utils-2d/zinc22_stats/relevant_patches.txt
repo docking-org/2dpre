@@ -1,3 +1,14 @@
+upload_code
+upload_test
 partition
+partition_code
+partition_apply
 zincid
-whoops1
+zincid_code
+zincid_apply
+zincid_test
+catid_code
+catid_apply
+catid_test
+export_code
+export_test

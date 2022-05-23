@@ -21,7 +21,7 @@ for entry in $(cat $BINDIR/../common_files/current_databases.txt); do
 	row=$(printf "%20s" $host:$port)
 	tableexists=$(psql -h $host -p $port $psqlargs -c "select * from patches limit 1")
 	if [ -z "$tableexists" ]; then
-		printf "$row %20s %20s %20s %20s %20s\n" na na na na na >> $stats_file
+		printf "$row %5s %5s %5s %5s %5s\n" na na na na na >> $stats_file
 		continue
 	fi
 	for patch in $current_patches; do
@@ -32,11 +32,11 @@ for entry in $(cat $BINDIR/../common_files/current_databases.txt); do
 		fi
 		status=$(echo "$status" | tail -n 1)
 		if [ "$status" = "f" ]; then
-			status=false
+			status="     "
 		elif [ "$status" = "t" ]; then
-			status=true
+			status="|||||"
 		fi
-		row=$(printf "$row %20s" $status)
+		row=$(printf "$row %5s" $status)
 	done
 	echo "$row" >> $stats_file
 done

@@ -56,7 +56,7 @@ begin;
 	call upload_bypart(partition_idx, 'temp_load_p3', 'catalog_substance', null, '{{"sub_id_fk:bigint"},{"cat_content_fk:bigint"}}', 'cat_sub_itm_id:bigint', 'cat_sub_itm_id_seq', catsub_diff_file)
 	*/
 
-	create or replace function upload_substance_bypart(part int, transid text) returns int as $$
+	create or replace function upload_substance_bypart(part int, transid text, diff_file_dest text) returns int as $$
 		declare
 			tempvar int;
 			cntupload int;
@@ -148,7 +148,7 @@ begin;
 				where
 					ns.rn = 1
 			);*/
-			execute(format('insert into substance_p%s (smiles, sub_id, tranche_id) (select smiles, sub_id, tranche_id from new_substances ns where ns.rn = 1)', part));
+			execute(format('copy (insert into substance_p%s (smiles, sub_id, tranche_id) (select smiles, sub_id, tranche_id from new_substances ns where ns.rn = 1) returning *) to ''%s/sub_ins/%s''', part, diff_file_dest, part));
 					
 			-- now we move the processed data to the next stage
 			insert into temp_load_p2 (
@@ -181,7 +181,7 @@ begin;
 
 	$$ language plpgsql;
 
-	create or replace function upload_catcontent_bypart(part int, transid text) returns int as $$
+	create or replace function upload_catcontent_bypart(part int, transid text, diff_file_dest) returns int as $$
 		declare
 			tempvar int;
 			cntnew int;
@@ -270,7 +270,7 @@ begin;
 				where
 					nc.rn = 1
 			);*/
-			execute(format('insert into catalog_content_p%s (supplier_code, cat_content_id, cat_id_fk) (select nc.code, nc.code_id, nc.cat_id from new_codes nc where nc.rn = 1)', part));
+			execute(format('copy (insert into catalog_content_p%s (supplier_code, cat_content_id, cat_id_fk) (select nc.code, nc.code_id, nc.cat_id from new_codes nc where nc.rn = 1) returning *) to ''%s/cat/%s''', part, diff_file_dest, part));
 
 			insert into temp_load_p3 (
 				select 
@@ -297,7 +297,7 @@ begin;
 
 	$$ language plpgsql;
 
-	create or replace function upload_catsub_bypart(part int, transid text) returns int as $$
+	create or replace function upload_catsub_bypart(part int, transid text, diff_file_dest text) returns int as $$
 		declare
 			tempvar int;
 			cntnew int;
@@ -372,7 +372,7 @@ begin;
 			);
 			*/
 
-			execute(format('insert into catalog_substance_p%s (sub_id_fk, cat_content_fk, tranche_id, cat_sub_itm_id) (select sub_id, code_id, tranche_id, cat_sub_itm_id from new_entries where rn = 1)', part));
+			execute(format('copy (insert into catalog_substance_p%s (sub_id_fk, cat_content_fk, tranche_id, cat_sub_itm_id) (select sub_id, code_id, tranche_id, cat_sub_itm_id from new_entries where rn = 1) returning *) to ''%s/subcat/%s''', part, diff_file_dest, part));
 
 			execute(format('insert into transaction_record_%s (stagei, parti, nnew, nupload) (values (3, %s, %s, %s))', transid, part, cntnew, cntupload));
 
@@ -385,16 +385,16 @@ begin;
 		end;
 	$$ language plpgsql;
 
-	create or replace function upload(stage int, part int, transid text) returns int as $$
+	create or replace function upload(stage int, part int, transid text, diff_file_dest text) returns int as $$
 		begin
 			case
 				when stage = 1 then
-					perform upload_substance_bypart(part, transid);
+					perform upload_substance_bypart(part, transid, diff_file_dest);
 					raise notice 'finished substance bypart';
 				when stage = 2 then
-					perform upload_catcontent_bypart(part, transid);
+					perform upload_catcontent_bypart(part, transid, diff_file_dest);
 				when stage = 3 then
-					perform upload_catsub_bypart(part, transid);
+					perform upload_catsub_bypart(part, transid, diff_file_dest);
 				else
 					raise EXCEPTION 'upload stage not defined! %', stage;
 					return 1;
@@ -403,6 +403,6 @@ begin;
 		end;
 	$$ language plpgsql;
 
-	select upload(:stage, :part, :'transid');
+	select upload(:stage, :part, :'transid', :'diff_file_dest');
 
 commit;

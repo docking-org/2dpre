@@ -9,6 +9,7 @@ from load_app.common.upload import make_hash_partitions, get_partitions_count, c
 
 def create_source_file(source_dirs, cat_shortnames):
 
+    database_port = Database.instance.port
     source_f = (os.environ.get("TEMPDIR") or "/local2/load") + "/" + str(database_port) + "_upload.txt"
 
     psql_source_f = open(source_f, 'w')
@@ -25,7 +26,7 @@ def create_source_file(source_dirs, cat_shortnames):
                     # we do a more sophisticated escape sequence using sed below
                     # this strategy could potentially add extra escape characters when they are not needed
                     #escaped_line = line.replace('\\', '\\\\').strip()
-                    tokens = escaped_line.split()
+                    tokens = line.split()
                     if len(tokens) == 2: # filter out lines that will cause an error to be thrown
                         psql_source_f.write(' '.join(tokens + [str(cat_id), str(tranche_id)]) + "\n")
 
@@ -39,7 +40,7 @@ def create_source_file(source_dirs, cat_shortnames):
 def partition_and_upload_input_data(source_dirs, cat_shortnames):
 
     source_f = create_source_file(source_dirs, cat_shortnames)
-    n_partitions = get_partitions_count(database_port)
+    n_partitions = get_partitions_count()
 
     Database.instance.call("drop table if exists temp_load_p1")
     Database.instance.call("create table temp_load_p1 (smiles varchar, code varchar, cat_id smallint, tranche_id smallint) partition by hash(smiles)")
@@ -64,12 +65,13 @@ def partition_and_upload_input_data(source_dirs, cat_shortnames):
 
     return n_partitions
 
-def upload_partitioned(stage, partition_index, transaction_identifier):
+def upload_partitioned(stage, partition_index, transaction_identifier, diff_destination):
 
     psqlvars = {}
     psqlvars["stage"] = stage
     psqlvars["part"] = partition_index
     psqlvars["transid"] = transaction_identifier
+    psqlvars["diff_file_dest"] = diff_destination
 
     code = Database.instance.call_file(BINDIR + '/psql/tin_partitioned_upload.pgsql', vars=psqlvars)
     if code == 0:
@@ -77,13 +79,19 @@ def upload_partitioned(stage, partition_index, transaction_identifier):
     else:
         raise NameError("upload step failed @ {},{}".format(3, partition_index))
 
+#def get_partitions_count():
+#    return int(Database.instance.select("select ivalue from meta where svalue = 'n_partitions'").first()[0])
+
 def emulate_upload(args):
     source_dirs = args.source_dirs
     cat_shortnames = args.catalogs
+    diff_destination = args.diff_destination
+
+    subprocess.call(["mkdir", "-p"] + [diff_destination + diff_bucket for diff_bucket in ["/sub", "/cat", "/catsub"]])
 
     transaction_identifier = "_".join(cat_shortnames)
     
-    n_partitions = get_partitions_count(database_port)
+    n_partitions = get_partitions_count()
 
     if not check_transaction_started(transaction_identifier):
         partition_and_upload_input_data(source_dirs, cat_shortnames)
@@ -94,16 +102,16 @@ def emulate_upload(args):
         print(1, i)
         if check_transaction_record(transaction_identifier, 1, i):
             continue
-        upload_partitioned(1, i, transaction_identifier)
+        upload_partitioned(1, i, transaction_identifier, diff_destination)
     for i in range(n_partitions):
         print(2, i)
         if check_transaction_record(transaction_identifier, 2, i):
             continue
-        upload_partitioned(2, i, transaction_identifier)
+        upload_partitioned(2, i, transaction_identifier, diff_destination)
     for i in range(n_partitions):
         print(3, i)
         if check_transaction_record(transaction_identifier, 3, i):
             continue
-        upload_partitioned(3, i, transaction_identifier)
+        upload_partitioned(3, i, transaction_identifier, diff_destination)
 
     return True

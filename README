@@ -33,6 +33,6 @@ utils-2d/common_files
 
 	Contains all sorts of (relatively) static data about the system, e.g which database is on which machine, which chemical tranches map to which tin database, etc.
 
-utils-2d/statistics
+utils-2d/zinc22_stats
 
 	Scripts used to collect statistics across the system as a whole. Useful for assessing system health and problem areas.

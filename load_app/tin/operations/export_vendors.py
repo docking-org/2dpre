@@ -1,7 +1,7 @@
 from load_app.common.consts import *
 from load_app.common.database import Database
 from load_app.tin.common import subid_to_zincid_opt
-import os, sys, subprocess
+import os, sys, subprocess, shutil
 
 def export_vendors(destination):
 
@@ -27,7 +27,7 @@ def export_vendors(destination):
 		subprocess.call(["awk", '{print $1 "\t" $3 "\t" $2 "\t" $6}', dstfile +'.t'], stdout=final_out)
 		final_out.close()
 		os.remove(dstfile + '.t')
-		subprocess.call(["gzip", dstfile])
+		subprocess.call(["gzip", "-f", dstfile])
 
 	os.remove(export_raw_dest)
 	shutil.rmtree(export_raw_split_dest)
