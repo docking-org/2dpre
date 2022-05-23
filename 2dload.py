@@ -9,7 +9,7 @@ from load_app.tin.operations.upload_zincid import upload_zincid as tin_upload_zi
 from load_app.tin.operations.export_antimony import export_all_from_tin as tin_antimony_export
 from load_app.tin.operations.export_vendors import export_vendors as tin_export_vendors
 from load_app.tin.operations.export_substances import export_substances as tin_export_substances
-from load_app.antimony.operations.upload import upload_antimony
+from load_app.antimony.operations.upload import emulate_upload as antimony_upload
 
 from load_app.tin.patches.partition import TinPartitionPatch
 from load_app.tin.patches.catid import CatIdPartitionPatch
@@ -107,7 +107,7 @@ parser_sb.set_defaults(subsystem="tin")
 sb_ops_subparser = parser_sb.add_subparsers(title="operation", help="choose an operation")
 
 sb_upload_parser = sb_ops_subparser.add_parser("upload", help="upload exported supplier code data to antimony")
-sb_upload_parser.set_defaults(func=wrpfnc(checksbpatches, checksbuptodate, upload_antimony))
+sb_upload_parser.set_defaults(func=wrpfnc(checksbpatches, checksbuptodate, antimony_upload))
 
 args = parser_main.parse_args()
 print(args)

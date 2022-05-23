@@ -123,6 +123,7 @@ DECLARE
 	loadtable_p text;
 	query text;
 	col text;
+	nnew int;
 BEGIN
 	IF PARTITION <> - 1 THEN
 		desttable_p := format('%s_p%s', desttable, PARTITION);
@@ -167,6 +168,7 @@ BEGIN
 	EXECUTE (format('insert into new_entries(%1$s, %2$s, rn, temp_id) (select %1$s, min(%2$s) over w as %2$s, ROW_NUMBER() over w as rn, temp_id from (select %3$s, case when ROW_NUMBER() over w = 1 then nextval(''%4$s'') else null end as %2$s, t.temp_id from temp_table_load t where t.%2$s is null window w as (partition by %3$s)) t window w as (partition by %3$s))', cols_declare (keyfields, ''), sc_colname (idfield), cols_declare (keyfields, 't.'), destseq));
 	-- finally, insert new entries to destination table
 	query := format('insert into %1$s (%2$s, %3$s, %4$s) (select %5$s, n.%3$s, %6$s from new_entries n left join temp_table_load t on n.temp_id = t.temp_id where n.rn = 1)', desttable_p, cols_declare (keyfields, ''), sc_colname(idfield), cols_declare(destcolumns, ''), cols_declare (keyfields, 'n.'), cols_declare (destcolumns, 't.'));
+	select count(*) from new_entries where rn = 1 into nnew;
 	-- save the diff to an external file (if specified)
 	IF NOT filediff IS NULL THEN
 		query := 'copy (' || query || ' returning *) to ''' || filediff || '''';
@@ -181,7 +183,7 @@ BEGIN
 	DROP TABLE temp_table_load;
 	DROP SEQUENCE temp_seq;
 	DROP TABLE new_entries;
-	RETURN 0;
+	RETURN nnew;
 
 	/* END GENERALIZATION REWRITE */
 END
