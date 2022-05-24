@@ -46,7 +46,7 @@ def upload_complete(transaction_id):
     else:
         return False
 
-def increment_version(db_port, uploadname):
+def increment_version(uploadname):
     Database.instance.call("update meta set ivalue = ivalue + 1 where varname = 'version'")
     version_no = get_version()
     Database.instance.call("insert into meta(varname, svalue, ivalue) (values ('upload_name', '{}', {}))".format(uploadname, version_no))

@@ -13,6 +13,7 @@ export BINDIR
 
 source_dirs=$1
 catalogs=$2
+diff_destination=$3
 #ports=$2
 
 uploadtype=${UPLOAD_TYPE-upload}
@@ -51,7 +52,14 @@ while IFS= read -r entry; do
 	#done
 	#files=$(printf "$files" | head -c -1) # trim off the last whitespace
 
-	echo $HOST $port tin $uploadtype \""$source_dirs"\" \""$catalogs"\" >> $joblist_name
+	if [ "$uploadtype" = "upload_zincid" ]; then
+		echo $HOST $port tin $uploadtype $source_dirs $catalogs >> $joblist_name
+	elif [ "$uploadtype" = "upload" ]; then
+		echo $HOST $port tin $uploadtype --source_dirs="$source_dirs" --catalogs="$catalogs" --diff_destination="$diff_destination" >> $joblist_name
+	else
+		echo "invalid upload type!"
+		exit 1
+	fi
 
 done <<< "$(grep $HOST $BINDIR/common_files/database_partitions.txt)"
 
@@ -59,4 +67,4 @@ njobs=$(cat $joblist_name | wc -l)
 
 # each machine has 80 cores, so each job will reserve 1/4 of the machines cpu power, which should be more than enough
 # this also means that other jobs will not interfere with the patching, while still allowing them some room
-sbatch -c 20 -a 1-$njobs%$NPARALLEL -o $logdir/%a.out -w $HOST -J sn_$uploadtype $BINDIR/runjob_2dload_new.bash $joblist_name $BINDIR
+sbatch -c 20 -a 1-$njobs%$NPARALLEL -o $logdir/%a.out -w $HOST -J z22_snup_$uploadtype $BINDIR/runjob_2dload_new.bash $joblist_name $BINDIR

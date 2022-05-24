@@ -16,9 +16,13 @@ from load_app.tin.patches.catid import CatIdPartitionPatch
 from load_app.tin.patches.zincid import ZincIdPartitionPatch
 from load_app.tin.patches.export import ExportPatch
 
+from load_app.antimony.patches.partition import AntimonyPartitionPatch
+
 from load_app.common.patch import PatchPatch, UploadPatch
 from load_app.common.database import Database
 from load_app.common.upload import upload_complete
+
+from load_app.tin.upload_hist import check_upload_history as tin_check_upload_history 
 
 import fcntl
 
@@ -41,9 +45,13 @@ def checktinpatches(args):
     checkpatch(CatIdPartitionPatch)
     checkpatch(ExportPatch)
 def checktinuptodate(args):
-    latestpatched = upload_complete('zinc1to8')
-    if not latestpatched:
-        raise Exception("database not up to date!") 
+    catalogs = getattr(args, 'catalogs', None)
+    transaction_id = getattr(args, 'transaction_id', None)
+    if catalogs:
+        transaction_id = '_'.join(catalogs)
+    if upload_complete(transaction_id):
+        raise Exception("this upload has already finished for this database!")
+    tin_check_upload_history(transaction_id)
 
 def checksbpatches(args):
     checkpatch(PatchPatch)
@@ -102,11 +110,13 @@ tin_export_parser.add_argument("export_dest", default=None, help="where exported
 tin_export_parser.set_defaults(func=wrpfnc(checktinpatches, checktinuptodate, tin_export), user="tinuser")
 
 parser_sb = system_subparser.add_parser("antimony", help="antimony subsystem, see 2dload.py [port] antimony --help", aliases=["sb"])
-parser_sb.set_defaults(subsystem="tin")
+parser_sb.set_defaults(subsystem="antimony")
 
 sb_ops_subparser = parser_sb.add_subparsers(title="operation", help="choose an operation")
 
 sb_upload_parser = sb_ops_subparser.add_parser("upload", help="upload exported supplier code data to antimony")
+sb_upload_parser.add_argument("transaction_id", help="unique name for this transaction. apply this name to all databasese you are uploading to in the same time frame")
+sb_upload_parser.add_argument("diff_destination", help="where to put database diff")
 sb_upload_parser.set_defaults(func=wrpfnc(checksbpatches, checksbuptodate, antimony_upload))
 
 args = parser_main.parse_args()

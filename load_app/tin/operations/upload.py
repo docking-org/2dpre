@@ -114,4 +114,6 @@ def emulate_upload(args):
             continue
         upload_partitioned(3, i, transaction_identifier, diff_destination)
 
+    increment_version(transaction_identifier)
+
     return True

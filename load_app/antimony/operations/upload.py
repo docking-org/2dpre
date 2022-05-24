@@ -6,20 +6,20 @@ import subprocess
 import os
 
 def create_source_file(pid):
-	to_upload = list(filter(lambda x: x.endswith('.txt'), os.listdir(antimony_src_dir + "/" + str(pid))))
-	to_upload = ["/".join([antimony_src_dir, str(pid), e]) for e in to_upload]
-	if len(to_upload) == 0:
-		raise Exception("antimony already up to date!")
-	source_filename = antimony_scratch_dir + "/antimony_{}_upload.txt".format(pid)
-	source_file = open(source_filename, 'w')
-	subprocess.call(["cat"] + to_upload, stdout=source_file)
-	source_file.close()
-	return source_filename
+    to_upload = list(filter(lambda x: x.endswith('.txt'), os.listdir(antimony_src_dir + "/" + str(pid))))
+    to_upload = ["/".join([antimony_src_dir, str(pid), e]) for e in to_upload]
+    if len(to_upload) == 0:
+        raise Exception("antimony already up to date!")
+    source_filename = antimony_scratch_dir + "/antimony_{}_upload.txt".format(pid)
+    source_file = open(source_filename, 'w')
+    subprocess.call(["cat"] + to_upload, stdout=source_file)
+    source_file.close()
+    return source_filename
 
 def finalize_upload(pid):
-	to_upload = list(filter(lambda x: x.endswith('.txt'), os.listdir(antimony_src_dir + "/" + str(pid))))
-	to_upload = ["/".join([antimony_src_dir, str(pid), e]) for e in to_upload]
-	subprocess.call(["gzip"] + to_upload)
+    to_upload = list(filter(lambda x: x.endswith('.txt'), os.listdir(antimony_src_dir + "/" + str(pid))))
+    to_upload = ["/".join([antimony_src_dir, str(pid), e]) for e in to_upload]
+    subprocess.call(["gzip"] + to_upload)
 
 def partition_and_upload_input_data(pid):
 
@@ -50,23 +50,23 @@ def upload_partitioned(stage, partition_index, transaction_identifier, diff_dest
     psqlvars["transid"] = transaction_identifier
     psqlvars["diff_file_dest"] = diff_destination
 
-    code = Database.instance.call_file(BINDIR + '/psql/tin_partitioned_upload.pgsql', vars=psqlvars)
+    code = Database.instance.call_file(BINDIR + '/psql/antimony/antimony_upload.pgsql', vars=psqlvars)
     if code == 0:
         return True
     else:
-        raise NameError("upload step failed @ {},{}".format(3, partition_index))
+        raise NameError("upload step failed @ {},{}".format(stage, partition_index))
 
 def emulate_upload(args):
     diff_destination = args.diff_destination
 
     subprocess.call(["mkdir", "-p"] + [diff_destination + diff_bucket for diff_bucket in ["/codes", "/codesmap"]])
-	subprocess.call(["chmod", "777"] + [diff_destination + diff_bucket for diff_bucket in ["/codes", "/codesmap"]])
+    subprocess.call(["chmod", "777"] + [diff_destination + diff_bucket for diff_bucket in ["/codes", "/codesmap"]])
 
-    transaction_identifier = "_".join(cat_shortnames)
+    transaction_identifier = args.transaction_id
     
     n_partitions = get_partitions_count()
 
-	pid = get_partition_id(host, port)
+    pid = get_partition_id(args.host, args.port)
     if not check_transaction_started(transaction_identifier):
         partition_and_upload_input_data(pid)
         if not create_transaction_record_table(transaction_identifier):
@@ -77,15 +77,15 @@ def emulate_upload(args):
         if check_transaction_record(transaction_identifier, 1, i):
             continue
         upload_partitioned(1, i, transaction_identifier, diff_destination)
-	if not check_transaction_record(transaction_identifier, 2, 0):
-		# change the name of the column so the "automated" upload procedure recognizes sup_id_fk as the target column
-		Database.instance.call("alter table temp_load_p2 alter column sup_id rename to sup_id_fk")
+    if not check_transaction_record(transaction_identifier, 2, 0):
+        # change the name of the column so the "automated" upload procedure recognizes sup_id_fk as the target column
+        Database.instance.call("alter table temp_load_p2 rename column sup_id to sup_id_fk")
     for i in range(n_partitions):
         print(2, i)
         if check_transaction_record(transaction_identifier, 2, i):
             continue
         upload_partitioned(2, i, transaction_identifier, diff_destination)
 
-	finalize_upload(pid)
-	print("all done!")
+    finalize_upload(pid)
+    print("all done!")
     return True

@@ -37,7 +37,7 @@ if [ -z "$ports" ]; then
 
 		#echo $PORT
 
-		echo $HOST $port tin >> $joblist_name
+		echo $HOST $port tin patch >> $joblist_name
 
 	done
 else
@@ -45,10 +45,7 @@ else
 fi
 
 
-for m in $(cat $BINDIR/common_files/machines.txt); do
-	njobs=$(grep $m $BINDIR/common_files/current_databases.txt | wc -l)
+njobs=$(grep $m $BINDIR/common_files/current_databases.txt | wc -l)
 
-	mkdir $logdir/$m
-	sbatch -c 20 -a 1-$njobs%$NPARALLEL -o $logdir/$m/%a.out -w $m -J 2dpatch $BINDIR/runjob_2dload_new.bash $joblist_name $BINDIR
-
-done
+mkdir $logdir/$m
+sbatch -c 20 -a 1-$njobs%$NPARALLEL -o $logdir/$m/%a.out -w $m -J 2dpatch $BINDIR/runjob_2dload_new.bash $joblist_name $BINDIR

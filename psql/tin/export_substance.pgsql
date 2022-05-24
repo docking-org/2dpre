@@ -1,1 +1,1 @@
-copy (select smiles, sub_id, tranche_id from substance) to :'output_file';
+copy (select smiles, sub_id, tranche_name from substance sb join tranches t on sb.tranche_id = t.tranche_id) to :'output_file';

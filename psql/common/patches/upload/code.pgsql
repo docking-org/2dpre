@@ -11,7 +11,7 @@ BEGIN
 	FROM (
 		SELECT
 			attname::text AS col,
-			atttypid::regtype AS dtype
+			case when atttypmod != -1 then concat(atttypid::regtype::text, '(' || atttypmod || ')') else atttypid::regtype::text end as dtype
 		FROM
 			pg_attribute
 		WHERE
@@ -20,7 +20,7 @@ BEGIN
 	INNER JOIN (
 		SELECT
 			attname::text AS col,
-			atttypid::regtype AS dtype
+			case when atttypmod != -1 then concat(atttypid::regtype::text, '(' || atttypmod || ')') else atttypid::regtype::text end as dtype
 		FROM
 			pg_attribute
 		WHERE

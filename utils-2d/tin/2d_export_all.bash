@@ -12,5 +12,5 @@ for machine in $(cat $BINDIR/common_files/machines.txt); do
 	mkdir -p $log_dir
 	grep $machine $BINDIR/common_files/current_databases.txt | awk '{print $0 "\t" NR}' > $log_dir/joblist_map
 	export BINDIR
-	sbatch --cpus-per-task=5 -w $machine -o $log_dir/%a.out -J export_${export_type} --array=1-$n_dbs%1 $BINDIR/export_job.bash $export_type $export_dest
+	sbatch --cpus-per-task=5 -w $machine -o $log_dir/%a.out -J z22_snex_${export_type} --array=1-$n_dbs%1 $BINDIR/export_job.bash $export_type $export_dest
 done

@@ -14,10 +14,10 @@ begin;
 	create table catalog_substance_t (like catalog_substance including defaults) partition by hash(sub_id_fk);
 	create table catalog_substance_cat_t (like catalog_substance including defaults) partition by hash(cat_content_fk);
 
-	call create_table_partitions('substance_t');
-	call create_table_partitions('catalog_content_t');
-	call create_table_partitions('catalog_substance_t');
-	call create_table_partitions('catalog_substance_cat_t');
+	call create_table_partitions('substance_t', '');
+	call create_table_partitions('catalog_content_t', '');
+	call create_table_partitions('catalog_substance_t', '');
+	call create_table_partitions('catalog_substance_cat_t', '');
 	-- end bit that used to be done in python
 
 	--explain insert into substance_t(smiles, sub_id, tranche_id, date_updated) (select smiles, sub_id, tranche_id, date_updated from substance);

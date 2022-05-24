@@ -28,5 +28,5 @@ call rename_table_partitions('supplier_codes_t', 'supplier_codes');
 
 call rename_table_partitions('supplier_map_t', 'supplier_map');
 
-rollback;
+commit;
 

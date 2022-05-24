@@ -14,6 +14,6 @@ catalogs=$1
 
 for machine in $(cat $BINDIR/common_files/machines.txt); do
 
-	sbatch -o $machine.upload_all.slurmlog -w $machine $BINDIR/2d_patch_slurm.bash
+	$BINDIR/2d_patch_slurm.bash
 
 done

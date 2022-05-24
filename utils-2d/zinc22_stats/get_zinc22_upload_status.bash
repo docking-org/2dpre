@@ -20,7 +20,7 @@ for entry in $(cat $BINDIR/../common_files/current_databases.txt); do
 	echo $host $port
 
 	row=$(printf "%20s" $host:$port)
-	tableexists=$(psql -h $host -p $port $psqlargs -c "select * from tin_meta limit 1")
+	tableexists=$(psql -h $host -p $port $psqlargs -c "select * from meta limit 1")
 	[ -z "$tableexists" ] && printf "%20s %20s\n" $host:$port na >> $stats_file
 	#if [ -z "$tableexists" ]; then
 	#	printf "$row %20s %20s %20s %20s %20s\n" na na na na na >> $stats_file
@@ -28,7 +28,7 @@ for entry in $(cat $BINDIR/../common_files/current_databases.txt); do
 	#fi
 	#for patch in $current_patches; do
 
-		status=$(psql -h $host -p $port $psqlargs -c "select svalue from tin_meta where varname = 'upload_name' and ivalue in (select max(ivalue) from tin_meta where varname = 'upload_name' and svalue != '')" 2>/dev/null | tail -n 1)
+		status=$(psql -h $host -p $port $psqlargs -c "select svalue from meta where varname = 'upload_name' and ivalue in (select max(ivalue) from meta where varname = 'upload_name' and svalue != '')" 2>/dev/null | tail -n 1)
 		if [ "$status" = "svalue" ]; then
 			status=na
 		fi
