@@ -41,11 +41,14 @@ for result in config_curs.fetchall():
     port = result[2]
     tranche_map[tranche] = ':'.join([host, port])
 
-def get_zinc_id_partition(zinc_id):
+def get_tranche(zinc_id):
     hac = base62_rev(zinc_id[5])
     lgp = base62_rev(zinc_id[6])
     tranche = "H{:>02d}{}".format(hac, logp_range[lgp])
-    return tranche_map[tranche]
+    return tranche
+
+def get_zinc_id_partition(zinc_id):
+    return tranche_map[get_tranche(zinc_id)]
 
 def get_conn_string(partition_host_port):
     return "postgresql://tinuser@{}/tin".format(partition_host_port)
@@ -91,9 +94,10 @@ with open(args.results_out, 'w') as output_file:
         search_curs = search_conn.cursor()
         printProgressBar(curr_length, total_length, prefix = "Searching Zinc22: ", suffix=p_id, length=50)
 
-        data_file = io.StringIO('\n'.join([str(get_sub_id(z)) for z in zinc_ids_list]))
-        search_curs.execute("create temporary table tq_in (sub_id)")
-        search_curs.execute("create temporary table tq_ot (smiles, sub_id, tranche_id, supplier_code, cat_content_id, cat_id_fk)")
+        data_file = io.StringIO('\n'.join([str(get_sub_id(z)) + ',' + get_tranche(z) for z in zinc_ids_list]))
+        search_curs.execute("create temporary table tq_in (sub_id, tranche_name)")
+        search_curs.execute("create temporary table tq_ot (smiles, sub_id, tranche_id, supplier_code, cat_content_id, cat_id_fk, tranche_name)")
+        search_curs.copy_from(data_file, 'tq', sep=',', columns=('sub_id', 'tranche_name'))
         search_curs.execute("call get_some_pairs_by_sub_id('tq_in', 'tq_ot')")
         search_curs.execute("select smiles, sub_id, tranche_id, supplier_code, cat_content_id, cat_id_fk from tq_ot")
 
@@ -104,8 +108,12 @@ with open(args.results_out, 'w') as output_file:
             supplier_code   = result[3]
             cat_content_id  = result[4] # leave this out
             cat_id_fk       = result[5] # leave this out (for now)
-            output_file.write('\t'.join([smiles, sub_id, tranche_id, supplier_code]) + '\n')
+            tranche_name    = result[6]
+            zinc_id = get_zinc_id(sub_id, tranche_name)
+            output_file.write('\t'.join([smiles, zinc_id, supplier_code, tranche_name]) + '\n')
         
         curr_length += len(zinc_ids_list)
+
+    printProgressBar(curr_length, total_length, prefix = "Searching Zinc22: ", suffix="complete!", length=50)
 
     
