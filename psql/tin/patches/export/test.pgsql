@@ -1,7 +1,8 @@
 LOAD 'auto_explain';
 SET auto_explain.log_nested_statements = ON;
-SET auto_explain.log_min_duration = 1;
-SET client_min_messages to log;
+SET auto_explain.log_min_duration = 100;
+SET auto_explain.log_level to INFO;
+SET client_min_messages to WARNING;
 
 call rename_table_partitions('catalog_substance_t', 'catalog_substance');
 

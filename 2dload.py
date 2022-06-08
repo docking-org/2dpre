@@ -15,6 +15,8 @@ from load_app.tin.patches.partition import TinPartitionPatch
 from load_app.tin.patches.catid import CatIdPartitionPatch
 from load_app.tin.patches.zincid import ZincIdPartitionPatch
 from load_app.tin.patches.export import ExportPatch
+from load_app.tin.patches.wackymols import WackyMolsPatch
+from load_app.tin.patches.june3_2022 import June32022Patch
 
 from load_app.antimony.patches.partition import AntimonyPartitionPatch
 
@@ -44,7 +46,11 @@ def checktinpatches(args):
     checkpatch(ZincIdPartitionPatch)
     checkpatch(CatIdPartitionPatch)
     checkpatch(ExportPatch)
+    checkpatch(WackyMolsPatch)
+    checkpatch(June32022Patch)
 def checktinuptodate(args):
+    if args.nohistory:
+        return
     catalogs = getattr(args, 'catalogs', None)
     transaction_id = getattr(args, 'transaction_id', None)
     if catalogs:
@@ -87,6 +93,7 @@ system_subparser = parser_main.add_subparsers(title="subsystem", help="choose a 
 
 parser_tin = system_subparser.add_parser("tin", help="tin subsystem, see 2dload.py [port] tin --help", aliases=["sn"])
 parser_tin.set_defaults(subsystem="tin")
+parser_tin.add_argument("--no-check-history", action='store_true', dest='nohistory')
 
 tin_ops_subparser = parser_tin.add_subparsers(title="operation", help="choose an operation")
 
@@ -143,6 +150,7 @@ finally:
 
 sys.exit(0)
 
+# legacy code below
 """
 if len(sys.argv) == 1:
     print("usages:")

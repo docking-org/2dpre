@@ -5,7 +5,7 @@ import shutil
 
 from load_app.common.consts import *
 from load_app.tin.common import *
-from load_app.common.upload import make_hash_partitions, get_partitions_count, create_transaction_record_table, check_transaction_record, check_transaction_started
+from load_app.common.upload import make_hash_partitions, get_partitions_count, create_transaction_record_table, check_transaction_record, check_transaction_started, upload_complete, increment_version
 
 def create_source_file(database_port, source_dirs, transaction_id):
 
@@ -15,10 +15,10 @@ def create_source_file(database_port, source_dirs, transaction_id):
 
     print("processing file for postgres...")
     for source_dir in source_dirs:
-        for tranche in get_tranches(database_port):
-            print("processing", tranche)
-            tranche_id = get_tranche_id(database_port, tranche)
+        for tranche in get_tranches():
+            tranche_id = get_tranche_id(tranche)
             src_file = source_dir + '/' + tranche[:3] + '/' + tranche + '.smi'
+            print("processing", src_file)
             if not os.path.exists(src_file):
                 continue
             zincid_to_subid_opt(src_file, source_f, tranche_id, 1, writemode='a')
@@ -46,7 +46,7 @@ def upload_zincid(args):
     source_dirs = args.source_dirs
     transaction_id = args.transaction_id
 
-    if upload_complete(database_port, transaction_id):
+    if upload_complete(transaction_id):
         print("this upload transaction has already completed!")
         return
 
@@ -71,10 +71,10 @@ def upload_zincid(args):
     os.system("mkdir -p {}".format(tmpdir))
     os.system("chmod 777 {}".format(tmpdir))
 
-    code = Database.instance.call_file(BINDIR + "/psql/tin_partitioned_zincid_upload.pgsql", vars=psqlvars)
+    code = Database.instance.call_file(BINDIR + "/psql/tin/zincid_upload.pgsql", vars=psqlvars)
 
     if code == 0:
-        increment_version(database_port, transaction_id)
+        increment_version(transaction_id)
         print("upload successfull!")
 
     os.remove(psqlvars["source_f"])

@@ -95,7 +95,7 @@ begin;
 
 			subquery_1 := format('select sid.sub_id, sid.sub_partition_fk %1$s from %2$s it left join substance_id sid on it.sub_id = sid.sub_id order by sub_partition_fk', extrafields_decl_it, sub_id_input_tabname);
 
-			subquery_2 := format('select get_substance_by_id_pfk(sub_id, sub_partition_fk), sub_id %1$s from (%2$s) t', extrafields_decl, subquery_1);
+			subquery_2 := format('select case when not sub_id is null then get_substance_by_id_pfk(sub_id, sub_partition_fk) else null end, sub_id %1$s from (%2$s) t', extrafields_decl, subquery_1);
 
 			query := format('insert into %3$s (smiles, sub_id %1$s) (%2$s)', extrafields_decl, subquery_2, substance_output_tabname);
 

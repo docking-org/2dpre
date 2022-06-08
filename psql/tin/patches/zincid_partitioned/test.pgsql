@@ -11,7 +11,7 @@ insert into subid_t (values (999999999));
 
 create temporary table substance_out(sub_id bigint, smiles varchar, tranche_id smallint);
 
-call get_many_substances_by_id('subid_t', 'substance_out');
+call get_many_substances_by_id('subid_t', 'substance_out', null);
 
 select * from substance_out;
 

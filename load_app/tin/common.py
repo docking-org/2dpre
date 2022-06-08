@@ -64,12 +64,13 @@ def base62(n):
     b62_str += digits[n]
     return ''.join(reversed(b62_str))
 
-def get_tranches(port):
+def get_tranches():
     data = Database.instance.select("select tranche_name from tranches").all()
     return [d[0] for d in data]
 
 def zincid_to_subid_opt(infile, outfile, tranche_id, zincid_pos, only_output_zincid=False, writemode='w'):
     with open(outfile, writemode) as out:
+        fails = 0
         with open(infile, 'r') as src:
             # zincid column location specified beforehand
             for line in src:
@@ -78,8 +79,11 @@ def zincid_to_subid_opt(infile, outfile, tranche_id, zincid_pos, only_output_zin
                 try:
                     sub_id = base62_rev_zincid(zincid[6:])
                 except:
-                    print(tokens)
-                    raise NameError("asdf")
+                    print("failed to parse: ", tokens)
+                    fails += 1
+                    if fails > 50:
+                        raise Exception("too many parsing failures!")
+                    continue
                 if not only_output_zincid:
                     out.write(" ".join(tokens[:zincid_pos-1] + [str(sub_id), str(tranche_id)] + tokens[:zincid_pos-1] + tokens[zincid_pos:]) + "\n")
                 else:

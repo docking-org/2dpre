@@ -23,6 +23,9 @@ drop table supplier_map;
 drop table supplier_codes;
 
 alter table supplier_codes_t rename to supplier_codes;
+alter table supplier_map_t rename to supplier_map;
+
+create unique index supplier_code_uniq_idx on supplier_codes(supplier_code);
 
 call rename_table_partitions('supplier_codes_t', 'supplier_codes');
 

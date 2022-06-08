@@ -5,7 +5,7 @@ import shutil
 
 from load_app.common.consts import *
 from load_app.tin.common import *
-from load_app.common.upload import make_hash_partitions, get_partitions_count, create_transaction_record_table, check_transaction_record, check_transaction_started
+from load_app.common.upload import make_hash_partitions, get_partitions_count, create_transaction_record_table, check_transaction_record, check_transaction_started, increment_version
 
 def create_source_file(source_dirs, cat_shortnames):
 
@@ -17,7 +17,7 @@ def create_source_file(source_dirs, cat_shortnames):
     print("processing file for postgres...")
     for source_dir, cat_shortname in zip(source_dirs, cat_shortnames):
         cat_id = get_or_set_catid(cat_shortname)
-        for tranche in get_tranches(database_port):
+        for tranche in get_tranches():
             print("processing", tranche)
             tranche_id = get_tranche_id(tranche)
 
@@ -73,11 +73,11 @@ def upload_partitioned(stage, partition_index, transaction_identifier, diff_dest
     psqlvars["transid"] = transaction_identifier
     psqlvars["diff_file_dest"] = diff_destination
 
-    code = Database.instance.call_file(BINDIR + '/psql/tin_partitioned_upload.pgsql', vars=psqlvars)
+    code = Database.instance.call_file(BINDIR + '/psql/tin/upload.pgsql', vars=psqlvars)
     if code == 0:
         return True
     else:
-        raise NameError("upload step failed @ {},{}".format(3, partition_index))
+        raise NameError("upload step failed @ {},{}".format(stage, partition_index))
 
 #def get_partitions_count():
 #    return int(Database.instance.select("select ivalue from meta where svalue = 'n_partitions'").first()[0])
@@ -86,8 +86,10 @@ def emulate_upload(args):
     source_dirs = args.source_dirs
     cat_shortnames = args.catalogs
     diff_destination = args.diff_destination
+    diff_locations =  [diff_destination + diff_bucket for diff_bucket in ["/sub", "/cat", "/catsub"]]
 
-    subprocess.call(["mkdir", "-p"] + [diff_destination + diff_bucket for diff_bucket in ["/sub", "/cat", "/catsub"]])
+    subprocess.call(["mkdir", "-p"] + diff_locations)
+    subprocess.call(["chmod", "777"] + diff_locations)
 
     transaction_identifier = "_".join(cat_shortnames)
     

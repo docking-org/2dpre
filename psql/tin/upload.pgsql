@@ -17,7 +17,7 @@ it's sort of crappy, but has definitely improved performance!
 
 LOAD 'auto_explain';
 SET auto_explain.log_nested_statements = ON;
-SET auto_explain.log_min_duration = 0;
+SET auto_explain.log_min_duration = 10;
 SET client_min_messages to log;
 set enable_partitionwise_aggregate=on; -- doesn't seem to do much, but may help certain queries
 begin;
@@ -148,7 +148,9 @@ begin;
 				where
 					ns.rn = 1
 			);*/
-			execute(format('copy (insert into substance_p%s (smiles, sub_id, tranche_id) (select smiles, sub_id, tranche_id from new_substances ns where ns.rn = 1) returning *) to ''%s/sub_ins/%s''', part, diff_file_dest, part));
+			execute(format('copy (insert into substance_p%s (smiles, sub_id, tranche_id) (select smiles, sub_id, tranche_id from new_substances ns where ns.rn = 1) returning *) to ''%s/sub/%s''', part, diff_file_dest, part));
+
+			execute(format('insert into substance_id (sub_id, sub_partition_fk) (select sub_id, %s from new_substances ns where ns.rn = 1)', part));
 					
 			-- now we move the processed data to the next stage
 			insert into temp_load_p2 (
@@ -181,7 +183,7 @@ begin;
 
 	$$ language plpgsql;
 
-	create or replace function upload_catcontent_bypart(part int, transid text, diff_file_dest) returns int as $$
+	create or replace function upload_catcontent_bypart(part int, transid text, diff_file_dest text) returns int as $$
 		declare
 			tempvar int;
 			cntnew int;
@@ -271,6 +273,7 @@ begin;
 					nc.rn = 1
 			);*/
 			execute(format('copy (insert into catalog_content_p%s (supplier_code, cat_content_id, cat_id_fk) (select nc.code, nc.code_id, nc.cat_id from new_codes nc where nc.rn = 1) returning *) to ''%s/cat/%s''', part, diff_file_dest, part));
+			execute(format('insert into catalog_id (cat_content_id, cat_partition_fk) (select code_id, %s from new_codes nc where nc.rn = 1)', part));
 
 			insert into temp_load_p3 (
 				select 
@@ -372,7 +375,7 @@ begin;
 			);
 			*/
 
-			execute(format('copy (insert into catalog_substance_p%s (sub_id_fk, cat_content_fk, tranche_id, cat_sub_itm_id) (select sub_id, code_id, tranche_id, cat_sub_itm_id from new_entries where rn = 1) returning *) to ''%s/subcat/%s''', part, diff_file_dest, part));
+			execute(format('copy (insert into catalog_substance_p%s (sub_id_fk, cat_content_fk, tranche_id, cat_sub_itm_id) (select sub_id, code_id, tranche_id, cat_sub_itm_id from new_entries where rn = 1) returning *) to ''%s/catsub/%s''', part, diff_file_dest, part));
 
 			execute(format('insert into transaction_record_%s (stagei, parti, nnew, nupload) (values (3, %s, %s, %s))', transid, part, cntnew, cntupload));
 
