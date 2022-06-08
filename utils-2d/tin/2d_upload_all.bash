@@ -13,6 +13,7 @@ export UPLOAD_TYPE
 
 source_dirs=$1
 catalogs=$2
+diff_destination=$3
 
 for machine in $(cat $BINDIR/common_files/machines.txt); do
 

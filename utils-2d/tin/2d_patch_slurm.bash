@@ -25,7 +25,7 @@ joblist_name="$logdir/joblist.txt"
 printf "" > $joblist_name
 
 if [ -z "$ports" ]; then
-	for hostport in $(cat $BINDIR/common_files/current_databases.txt); do
+	for hostport in $(cat $BINDIR/common_files/current_databases.txt | grep $m); do
 
 		host=$(echo $hostport | cut -d':' -f1)
 		port=$(echo $hostport | cut -d':' -f2)

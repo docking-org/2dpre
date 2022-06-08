@@ -51,6 +51,17 @@ while IFS= read -r entry; do
 
 	#done
 	#files=$(printf "$files" | head -c -1) # trim off the last whitespace
+	if [ "$uploadtype" = "upload_zincid" ]; then
+		transaction_id=$catalogs
+	elif [ "$uploadtype" = "upload" ]; then
+		transaction_id=$(echo $catalogs | tr ' ' '_')
+	fi
+	already_finished=$(psql -h $HOST -p $port -d tin -U tinuser --csv -c "select true from meta where upload_name = '$transaction_id'" | wc -l)
+
+	if [ $already_finished -gt 1 ]; then
+		echo "$HOST $port" already uploaded
+		continue
+	fi
 
 	if [ "$uploadtype" = "upload_zincid" ]; then
 		echo $HOST $port tin $uploadtype $source_dirs $catalogs >> $joblist_name
@@ -62,6 +73,8 @@ while IFS= read -r entry; do
 	fi
 
 done <<< "$(grep $HOST $BINDIR/common_files/database_partitions.txt)"
+
+
 
 njobs=$(cat $joblist_name | wc -l)
 

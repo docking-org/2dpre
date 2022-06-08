@@ -14,6 +14,7 @@ catalogs=$1
 
 for machine in $(cat $BINDIR/common_files/machines.txt); do
 
+	export m=$machine
 	$BINDIR/2d_patch_slurm.bash
 
 done

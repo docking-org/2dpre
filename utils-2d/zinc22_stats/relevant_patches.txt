@@ -1,9 +1,7 @@
 upload_code
 upload_test
-partition
 partition_code
 partition_apply
-zincid
 zincid_code
 zincid_apply
 zincid_test
@@ -12,3 +10,5 @@ catid_apply
 catid_test
 export_code
 export_test
+wackymols_apply
+june3_2022_code

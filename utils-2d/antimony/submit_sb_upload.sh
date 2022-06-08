@@ -6,7 +6,7 @@ if ! [[ "$BINDIR" == "/"* ]]; then
         BINDIR=$PWD/$BINDIR
 fi
 
-NPARALLEL=${NPARALLEL-4}
+NPARALLEL=${NPARALLEL-1}
 HOST=${HOST-$( hostname | cut -d '.' -f1)}
 LOGDIR=$BINDIR/logs/upload/$HOST
 
