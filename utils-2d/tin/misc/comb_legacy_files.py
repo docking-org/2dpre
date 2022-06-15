@@ -4,12 +4,12 @@ import sys, subprocess, os
 infn = sys.argv[1]
 
 legacy_targets = [
-"/nfs/exb/zinc22/.legacy/ZINC_21Q2",
-"/nfs/exb/zinc22/.legacy/2d-09",
-"/nfs/exb/zinc22/.legacy/2d-10",
-"/nfs/exb/zinc22/.legacy/2d-01",
-"/nfs/exb/zinc22/.legacy/2d-11",
-"/nfs/exb/zinc22/2d-12-diff/2d/finished"]
+"/nfs/exb/zinc22/export/deprecated/ZINC_21Q2",
+"/nfs/exb/zinc22/export/deprecated/2d-09",
+"/nfs/exb/zinc22/export/deprecated/2d-10",
+"/nfs/exb/zinc22/export/deprecated/2d-01",
+"/nfs/exb/zinc22/export/deprecated/2d-11",
+"/nfs/exb/zinc22/export/deprecated/2d-12-diff/2d/finished"]
 curr_buffer = []
 curr_hac = None
 curr_tranche = None
@@ -63,7 +63,7 @@ with open(infn, 'r') as inf:
 			curr_buffer = [line]
 		else:
 			curr_buffer.append(line)
-check_targets(curr_buffer, outbuffer, curr_tranche_curr_hac)
+check_targets(curr_buffer, outbuffer, curr_tranche, curr_hac)
 
 outbuffer.close()
 #with open("result", 'w') as resf:

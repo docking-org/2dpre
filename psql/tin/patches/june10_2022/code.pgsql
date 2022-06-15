@@ -168,6 +168,45 @@ $$ language plpgsql;
 
 ---------------------------------------------------------------------------------------------
 
+-- expects tables "vendor_input" and "pairs_output" to have been created
+-- cb_vendor_input (supplier_code text);
+-- cb_pairs_output (smiles text, sub_id bigint, tranche_id smallint, supplier_code text, cat_id_fk smallint);
+-- antimony stores cat_content_id of stored supplier codes, but we don't use that here on the off chance that cat_content_id is/becomes unstable
+-- more reliable to directly look up by code value
+create or replace procedure cb_get_some_pairs_by_vendor() as $$
+begin
+	create temporary table pairs_tempload_p1(supplier_code text, sub_id bigint, cat_id smallint);
+	--create temporary table pairs_tempload_p2(smiles text, sub_id bigint, tranche_id smallint, supplier_code text, cat_id_fk smallint);
+
+	insert into pairs_tempload_p1 (select i.supplier_code, cs.sub_id_fk, cc.cat_id_fk from vendor_input i left join catalog_content cc on i.supplier_code = cc.supplier_code left join catalog_substance_cat cs on cs.cat_content_fk = cc.cat_content_id);
+
+	call get_some_substances_by_id('pairs_tempload_p1', 'pairs_output');
+
+	drop table pairs_tempload_p1;
+end;
+$$ language plpgsql;
+
+-- expects tables "q_sub_id_input" and "pairs_output" to have been created - just so we don't need to use ugly "execute" statements for certain logic
+-- cb_sub_id_input (sub_id bigint, tranche_id_orig smallint)
+-- cb_pairs_output (smiles text, sub_id bigint, tranche_id smallint, supplier_code text, cat_id smallint, tranche_id_orig smallint)
+-- need to keep track of the original tranche provided by the searched zinc id, is useful in case id does not look up or there is a mismatch
+create or replace procedure cb_get_some_pairs_by_sub_id() as $$
+begin
+	create temporary table pairs_tempload_p1(smiles text, sub_id bigint, tranche_id smallint, tranche_id_orig smallint);
+	create temporary table pairs_tempload_p2(smiles text, sub_id bigint, tranche_id smallint, cat_content_id bigint, tranche_id_orig smallint);
+
+	call get_some_substances_by_id('cb_sub_id_input', 'pairs_tempload_p1');
+
+	insert into pairs_tempload_p2 (select p1.smiles, p1.sub_id, p1.tranche_id, cs.cat_content_fk, p1.tranche_id_orig from pairs_tempload_p1 p1 left join catalog_substance cs on cs.sub_id_fk = p1.sub_id);
+
+	call get_some_codes_by_id('pairs_tempload_p2', 'cb_pairs_output');
+
+	drop table pairs_tempload_p1;
+	drop table pairs_tempload_p2;
+end;
+$$ language plpgsql;
+-- by the way- "cb" stands for "cartblanche" the name of the frontend site, given that these functions are used by the frontend
+
 create or replace procedure get_some_pairs_by_code_id(code_ids_input_tabname text, pairs_output_tabname text) as $$
 declare cols text[];
 begin

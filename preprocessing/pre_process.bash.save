@@ -20,9 +20,9 @@ function synchronize_all_but_first {
         echo
 }
 
-old_work=$(find /scratch/2dpre_$(whoami) -type d -mtime +180 | wc -l)
+old_work=$(find /dev/shm/2dpre_$(whoami) -type d -mtime +180 | wc -l)
 if [ $old_work -ge 1 ]; then
-	synchronize_all_but_first "removing_old_work" "find /scratch/2dpre_$(whoami) -type d -mtime +180 | xargs rm -r"
+	synchronize_all_but_first "removing_old_work" "find /dev/shm/2dpre_$(whoami) -type d -mtime +180 | xargs rm -r"
 fi
 
 source /nfs/soft/mitools/env.sh
@@ -34,11 +34,11 @@ TASK_ID=$SLURM_ARRAY_TASK_ID
 
 echo $JOB_ID $TASK_ID
 echo $HOSTNAME
-mkdir -p /scratch/2dpre_$(whoami)/${JOB_ID}_${TASK_ID}
+mkdir -p /dev/shm/2dpre_$(whoami)/${JOB_ID}_${TASK_ID}
 pushd $BINPATH
 BINPATH=$PWD
 popd
-cd /scratch/2dpre_$(whoami)/${JOB_ID}_${TASK_ID}
+cd /dev/shm/2dpre_$(whoami)/${JOB_ID}_${TASK_ID}
 TARGET=$(ls $SOURCE | awk -v x="$SOURCE/" '{print x $1 " " NR}' | grep -w $TASK_ID | awk '{print $1}')
 echo "$(hostname)  ${JOB_ID}_${TASK_ID} $TARGET" > info
 ln -s $TARGET $(basename $TARGET)
@@ -46,4 +46,4 @@ ln -s $TARGET $(basename $TARGET)
 $BINPATH/zincload-catalog.sh --skip-resolution --skip-creation --skip-loading --skip-depletion --name working $(basename $TARGET)
 
 tail -n+2 working/23-selected-compounds.ism > $DEST/$(basename $TARGET)
-[ -z $SKIP_DELETE] && rm -r /scratch/2dpre_$(whoami)/${JOB_ID}_${TASK_ID}
+[ -z $SKIP_DELETE] && rm -r /dev/shm/2dpre_$(whoami)/${JOB_ID}_${TASK_ID}
