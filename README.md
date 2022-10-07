@@ -65,7 +65,7 @@ We use slurm scripts to orchestrate our database operations, thus slurm is expec
 		- A corresponding python class must be created for this patch, you can see examples of this in load_app/tin/patches
 		- The patch load order is defined in 2dload.py in the "checktinpatches" and "checksbpatches" functions. Starting from a fresh install, all of these should be removed prior to loading (our patches will contain hard-coded references etc and don't make sense on a fresh system)
 	- The second system is our upload history system. This system only applies to TIN, as it is more sensitive than its sister system, antimony.
-		- Side note: if antimony did break or the data inside became malformed somehow, it would be much simpler to synchronize than TIN, as we can simply blank the antimony databases and upload again
+		- Side note: if antimony did break or the data inside became malformed somehow, it would be much simpler to synchronize than TIN, as we can simply blank the antimony databases and upload again. Not so much for TIN, where we want to preserve ZINC IDs
 	- The upload history system simply requires all upload operations to be entered into a log (common_files/tin_upload_history.txt), and requires that uploads to individual databases are performed in the order specified in the log. This makes upload/rollback operations across the system as a whole coherent.
 	
 4. Upload data via utils-2d/tin/2d_upload_all.bash. You must specify source files, an upload name (must also be defined in tin_upload_history.txt) as well as a directory destination for the upload diff (usable for a hypothetical rollback).
