@@ -17,6 +17,7 @@ diff_destination=$3
 #ports=$2
 
 uploadtype=${UPLOAD_TYPE-upload}
+justupdate=${JUST_UPDATE_INFO-}
 
 NPARALLEL=${NPARALLEL-1}
 HOST=${HOST-$(hostname | cut -d'.' -f1)}
@@ -56,17 +57,32 @@ while IFS= read -r entry; do
 	elif [ "$uploadtype" = "upload" ]; then
 		transaction_id=$(echo $catalogs | tr ' ' '_')
 	fi
-	already_finished=$(psql -h $HOST -p $port -d tin -U tinuser --csv -c "select true from meta where upload_name = '$transaction_id'" | wc -l)
+
+	already_finished=$(psql -h $HOST -p $port -d tin -U tinuser --csv -c "select true from meta where varname = 'upload_name' and svalue = '$transaction_id'" | wc -l)
+
+	if [ $already_finished -gt 1 ] && ! [ -z "$justupdate" ]; then
+		transaction_id=${transaction_id}_update
+		already_finished=$(psql -h $HOST -p $port -d tin -U tinuser --csv -c "select true from meta where varname = 'upload_name' and svalue = '$transaction_id'" | wc -l)
+	elif [ $already_finished -le 1 ] && ! [ -z "$justupdate" ]; then
+		echo "$HOST $port not uploaded to yet, won't update"
+		continue
+	fi
 
 	if [ $already_finished -gt 1 ]; then
+		echo $already_finished
 		echo "$HOST $port" already uploaded
 		continue
 	fi
 
 	if [ "$uploadtype" = "upload_zincid" ]; then
 		echo $HOST $port tin $uploadtype $source_dirs $catalogs >> $joblist_name
+		echo $HOST $port tin $uploadtype $source_dirs $catalogs
 	elif [ "$uploadtype" = "upload" ]; then
-		echo $HOST $port tin $uploadtype --source_dirs="$source_dirs" --catalogs="$catalogs" --diff_destination="$diff_destination" >> $joblist_name
+		if ! [ -z "$justupdate" ]; then
+			extra_args="--just-update-info"
+		fi
+		echo $HOST $port tin $uploadtype $extra_args --source-dirs="$source_dirs" --catalogs="$catalogs" --diff-destination="$diff_destination" >> $joblist_name
+		echo $HOST $port tin $uploadtype $extra_args --source-dirs="$source_dirs" --catalogs="$catalogs" --diff-destination="$diff_destination"
 	else
 		echo "invalid upload type!"
 		exit 1

@@ -29,16 +29,11 @@ with open(args.target, 'w') as targetfile:
 		for line in sourcefile:
 
 			tokens = line.strip().split()
-			if len(tokens) == 4: # this bit is for extended SMILES, which leave a space gap between the smiles string and a little bracketed bit (e.g CCC1C |1^1|)
-				smiles = tokens[0] + "_" + tokens[1] # join with an underscore, which I don't like, but will cause the least problems down the line (i think)
-				subid = tokens[2]
-				tranche = tokens[3]
-			else:
-				smiles, subid, tranche = tokens[0], tokens[1], tokens[2]
+			smiles, subid, tranche = tokens[0], tokens[1], tokens[2]
 			b62_subid = base62(int(subid))
 			b62_h = base62(int(tranche[1:3]))
 			b62_p = base62(logp_range[tranche[3:]])
 			b62_subid = "0" * (10 - len(b62_subid)) + b62_subid
 			zincid = "ZINC" + b62_h + b62_p + b62_subid
 			assert(len(zincid) == 16)
-			targetfile.write(" ".join([smiles, zincid]) + "\n")
+			targetfile.write(" ".join([smiles, zincid] + tokens[3:]) + "\n")

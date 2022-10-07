@@ -2,6 +2,7 @@ import sys, os
 import subprocess
 import tarfile
 import shutil
+import gzip
 
 from load_app.common.consts import *
 from load_app.common.database import Database
@@ -68,26 +69,47 @@ def get_tranches():
     data = Database.instance.select("select tranche_name from tranches").all()
     return [d[0] for d in data]
 
-def zincid_to_subid_opt(infile, outfile, tranche_id, zincid_pos, only_output_zincid=False, writemode='w'):
+def zincid_to_subid_opt(infile, outfile, tranche_id, only_output_zincid=False, writemode='w'):
+    if infile.endswith('.gz'):
+        src = gzip.open(infile, 'rb')
+    else:
+        src = open(infile, 'rb')
+    total = 0
     with open(outfile, writemode) as out:
         fails = 0
-        with open(infile, 'r') as src:
-            # zincid column location specified beforehand
+        first = False
+        zincid_pos = -1
+        with src:
+            total=0
+            firstline = src.readline()
+            tokens = [t.decode('utf-8') for t in firstline.strip().split()]
+            # zincid is supposed to be in the first column, but this is not always the case
+            # to avoid annoying manual specification of the column every time, automatically detect it here
+            for i, tok in enumerate(tokens):
+                if tok.startswith("ZINC") and len(tok) == 16:
+                    zincid_pos = i
+                    break
+            if zincid_pos == -1:
+                raise Exception("couldn't find a zinc id in the first line of this file! exiting!")
+            else:
+                print("found zincid pos: {}".format(zincid_pos))
             for line in src:
+                total += 1
                 tokens = line.strip().split()
-                zincid = tokens[zincid_pos-1]
+                zincid = tokens[zincid_pos]
                 try:
                     sub_id = base62_rev_zincid(zincid[6:])
                 except:
                     print("failed to parse: ", tokens)
                     fails += 1
-                    if fails > 50:
+                    if (fails/total) > 0.25:
                         raise Exception("too many parsing failures!")
                     continue
                 if not only_output_zincid:
                     out.write(" ".join(tokens[:zincid_pos-1] + [str(sub_id), str(tranche_id)] + tokens[:zincid_pos-1] + tokens[zincid_pos:]) + "\n")
                 else:
                     out.write(" ".join([str(sub_id), str(tranche_id)]) + "\n")
+    print("total mols={}".format(total))
 
 def subid_to_zincid_opt(infile, outfile, tranche_name, subid_pos):
     idstart = "ZINC" + digits[int(tranche_name[1:3])] + digits[logp_range.index(tranche_name[3:])]

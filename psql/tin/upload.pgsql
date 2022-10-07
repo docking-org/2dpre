@@ -153,7 +153,7 @@ begin;
 			execute(format('insert into substance_id (sub_id, sub_partition_fk) (select sub_id, %s from new_substances ns where ns.rn = 1)', part));
 					
 			-- now we move the processed data to the next stage
-			insert into temp_load_p2 (
+			insert into temp_load_p2(sub_id, code, tranche_id, cat_id) (
 
 				select
 					case when tl.sub_id is null then ns.sub_id else tl.sub_id end,
@@ -229,7 +229,7 @@ begin;
 
 			alter table new_codes add constraint temp_id_fk foreign key (temp_id) references temp_load_part_cat(temp_id);
 
-			insert into new_codes (
+			insert into new_codes(code, code_id, cat_id, rn, temp_id) (
 				select
 					t.code,
 					min(t.code_id) over w as code_id,
@@ -275,7 +275,7 @@ begin;
 			execute(format('copy (insert into catalog_content_p%s (supplier_code, cat_content_id, cat_id_fk) (select nc.code, nc.code_id, nc.cat_id from new_codes nc where nc.rn = 1) returning *) to ''%s/cat/%s''', part, diff_file_dest, part));
 			execute(format('insert into catalog_id (cat_content_id, cat_partition_fk) (select code_id, %s from new_codes nc where nc.rn = 1)', part));
 
-			insert into temp_load_p3 (
+			insert into temp_load_p3(sub_id, code_id, tranche_id) (
 				select 
 					tl.sub_id,
 					case when tl.code_id is null then nc.code_id else tl.code_id end,

@@ -12,6 +12,9 @@ def create_source_file(source_dirs, cat_shortnames):
     database_port = Database.instance.port
     source_f = (os.environ.get("TEMPDIR") or "/local2/load") + "/" + str(database_port) + "_upload.txt"
 
+    #if os.path.exists(source_f):
+    #    return source_f
+
     psql_source_f = open(source_f, 'w')
 
     print("processing file for postgres...")
@@ -32,7 +35,8 @@ def create_source_file(source_dirs, cat_shortnames):
 
     psql_source_f.close() 
     psql_source_f_t = open(source_f + '.t', 'w')
-    subprocess.call(["sed", "-E", "s/([^\\\\]+|^)(\\\\){1}([^\\\\]+|$)/\\1\\2\\2\\3/g", psql_source_f.name], stdout=psql_source_f_t)
+    subprocess.call(["sed", "-E", "s/\\\\/\\\\\\\\/g", psql_source_f.name], stdout=psql_source_f_t)
+    #subprocess.call(["sed", "-E", "s/([^\\\\]+|^)(\\\\){1}([^\\\\]+|$)/\\1\\2\\2\\3/g", psql_source_f.name], stdout=psql_source_f_t)
     psql_source_f_t.close()
     os.rename(psql_source_f_t.name, psql_source_f.name)
     return source_f
@@ -55,7 +59,7 @@ def partition_and_upload_input_data(source_dirs, cat_shortnames):
     make_hash_partitions("temp_load_p3", n_partitions)
 
     source_file = open(source_f, 'r')
-    code = Database.instance.call("copy temp_load_p1 from STDIN delimiter ' '", sp_kwargs={"stdin" : source_file})
+    code = Database.instance.call("copy temp_load_p1(smiles, code, cat_id, tranche_id) from STDIN delimiter ' '", sp_kwargs={"stdin" : source_file})
     if not code == 0:
         raise NameError("failed to copy in data!")
 
@@ -86,14 +90,23 @@ def emulate_upload(args):
     source_dirs = args.source_dirs
     cat_shortnames = args.catalogs
     diff_destination = args.diff_destination
-    diff_locations =  [diff_destination + diff_bucket for diff_bucket in ["/sub", "/cat", "/catsub"]]
+    diff_buckets = ["/sub", "/cat", "/catsub"] if not args.just_update_info else ["/sub_update_tranche_id", "/sup_update_cat_id"]
+    diff_destination = diff_destination + "/{}".format(args.host+':'+str(args.port))
+    diff_locations =  [diff_destination + diff_bucket for diff_bucket in diff_buckets]
 
     subprocess.call(["mkdir", "-p"] + diff_locations)
     subprocess.call(["chmod", "777"] + diff_locations)
 
-    transaction_identifier = "_".join(cat_shortnames)
+    transaction_identifier = "_".join(cat_shortnames + (["update"] if args.just_update_info else []))
     
     n_partitions = get_partitions_count()
+
+    if args.just_update_info:
+        source_f = create_source_file(args.source_dirs, args.catalogs)
+        code = Database.instance.call_file(BINDIR + '/psql/tin/upload_update.pgsql', vars={"source_f":source_f, "diff_destination":diff_destination})
+        if code == 0:
+            increment_version(transaction_identifier)
+        return True
 
     if not check_transaction_started(transaction_identifier):
         partition_and_upload_input_data(source_dirs, cat_shortnames)

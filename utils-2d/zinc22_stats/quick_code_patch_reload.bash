@@ -16,6 +16,11 @@ for d in $(cat $BINDIR/common_files/current_databases.txt); do
 	psql -h $host -p $port -d tin -U tinuser -f $patch_code
 	res=$?
 	if [ -z $res ]; then
-		psql -h $host -p $port -d tin -U tinuser -c "update patches set patched=true where patchname='$patch'"
+		res=$(psql -h $host -p $port -d tin -U tinuser --csv -c "select patched from patches where patchname='$patch'" | tail -n 1)
+		if [ -z "$res" ]; then
+			psql -h $host -p $port -d tin -U tinuser -c "insert into patches(patchname, patched) (values ('$patch', true))"
+		else
+			psql -h $host -p $port -d tin -U tinuser -c "update patches set patched=true where patchname='$patch'"
+		fi
 	fi
 done

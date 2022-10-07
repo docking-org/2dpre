@@ -24,12 +24,12 @@ for tranche_file in $tranche_files; do
     if [[ $tranche_file == MISSING* ]]; then
         hlogp=$(printf $tranche_file | cut -d':' -f2)
         echo $hlogp missing from tranches, no worries
-	intarfile=$(tar tf $EXPORT_DEST/$PARTITION_ID.pre | grep $hlogp)
-	if ! [ -z "$intarfile" ]; then
-		continue
-	fi
+	#intarfile=$(tar tf $EXPORT_DEST/$PARTITION_ID.pre | grep $hlogp)
+	#if ! [ -z "$intarfile" ]; then
+	#	continue
+	#fi
         touch $EXPORT_DEST/$hlogp
-	tar -C $EXPORT_DEST -rf $EXPORT_DEST/$PARTITION_ID.pre $hlogp
+	#tar -C $EXPORT_DEST -rf $EXPORT_DEST/$PARTITION_ID.pre $hlogp
 	continue
     fi
     echo $tranche_file
@@ -37,12 +37,12 @@ for tranche_file in $tranche_files; do
     export INPUT_FILE=$tranche_file
     export OUTPUT_DEST=$EXPORT_DEST/$TRANCHE_NAME
     if [ -f $OUTPUT_DEST ]; then
-	intarfile=$(tar tf $EXPORT_DEST/$PARTITION_ID.pre | grep $TRANCHE_NAME)
-	if [ -z "$intarfile" ]; then
-		tar -C $EXPORT_DEST -rf $EXPORT_DEST/$PARTITION_ID.pre $TRANCHE_NAME
-	else
-        	continue
-	fi
+	#intarfile=$(tar tf $EXPORT_DEST/$PARTITION_ID.pre | grep $TRANCHE_NAME)
+	#if [ -z "$intarfile" ]; then
+	#	tar -C $EXPORT_DEST -rf $EXPORT_DEST/$PARTITION_ID.pre $TRANCHE_NAME
+	#else
+        continue
+	#fi
     fi
     jobid=$($BINPATH/pre_process_file.bash)
     JOBS_TO_WAIT_ON="$JOBS_TO_WAIT_ON $jobid"

@@ -178,9 +178,9 @@ begin
 	create temporary table pairs_tempload_p1(supplier_code text, sub_id bigint, cat_id smallint);
 	--create temporary table pairs_tempload_p2(smiles text, sub_id bigint, tranche_id smallint, supplier_code text, cat_id_fk smallint);
 
-	insert into pairs_tempload_p1 (select i.supplier_code, cs.sub_id_fk, cc.cat_id_fk from vendor_input i left join catalog_content cc on i.supplier_code = cc.supplier_code left join catalog_substance_cat cs on cs.cat_content_fk = cc.cat_content_id);
+	insert into pairs_tempload_p1 (select i.supplier_code, cs.sub_id_fk, cc.cat_id_fk from cb_vendor_input i left join catalog_content cc on i.supplier_code = cc.supplier_code left join catalog_substance_cat cs on cs.cat_content_fk = cc.cat_content_id);
 
-	call get_some_substances_by_id('pairs_tempload_p1', 'pairs_output');
+	call get_some_substances_by_id('pairs_tempload_p1', 'cb_pairs_output');
 
 	drop table pairs_tempload_p1;
 end;

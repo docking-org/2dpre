@@ -18,8 +18,15 @@ for d in $(cat $BINDIR/common_files/database_partitions.txt | tr ' ' ':'); do
 		tot=$((tot+1))
 		hac=$(echo $tranche | awk '{print substr($1, 1, 3)}')
 		target=$export_dir/$hac/${tranche}.smi
-		if [ -f $target ] || [ -f $target.gz ]; then
-			suc=$((suc+1))
+		target2=$export_dir/${tranche}
+		if [ -z $CHECK_EMPTY ]; then
+			if [ -f $target ] || [ -f $target.gz ] || [ -f $target2 ]; then
+				suc=$((suc+1))
+			fi
+		else
+			if [ -s $target ] || [ -s $target.gz ] || [ -s $target2 ]; then
+				suc=$((suc+1))
+			fi
 		fi
 	done
 	result="$suc/$tot"

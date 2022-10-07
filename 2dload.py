@@ -53,8 +53,9 @@ def checktinuptodate(args):
         return
     catalogs = getattr(args, 'catalogs', None)
     transaction_id = getattr(args, 'transaction_id', None)
+    just_update = getattr(args, 'just_update_info', False)
     if catalogs:
-        transaction_id = '_'.join(catalogs)
+        transaction_id = '_'.join(catalogs + (["update"] if just_update else []))
     if upload_complete(transaction_id):
         raise Exception("this upload has already finished for this database!")
     tin_check_upload_history(transaction_id)
@@ -101,14 +102,16 @@ tin_patch_parser = tin_ops_subparser.add_parser("patch", help="just patch databa
 tin_patch_parser.set_defaults(func=wrpfnc(checktinpatches, checktinuptodate))
 
 tin_upload_parser = tin_ops_subparser.add_parser("upload", help="upload pre-processed vendor data to database")
-tin_upload_parser.add_argument("--source_dirs", nargs="+", required=True, help="directory(s) where tranche split & preprocessed files are stored")
+tin_upload_parser.add_argument("--source-dirs", nargs="+", required=True, help="directory(s) where tranche split & preprocessed files are stored")
 tin_upload_parser.add_argument("--catalogs", nargs="+", required=True, help="name(s) of catalogs being uploaded, each corresponding to a source directory at the same position within the argument list")
-tin_upload_parser.add_argument("--diff_destination", required=True, help="where to export the database diff from this upload to")
+tin_upload_parser.add_argument("--diff-destination", required=True, help="where to export the database diff from this upload to")
+tin_upload_parser.add_argument("--just-update-info", required=False, action='store_true', default=False, help="just update tranche_id and cat_id information, don't insert")
 tin_upload_parser.set_defaults(func=wrpfnc(checktinpatches, checktinuptodate, tin_upload))
 
 tin_upload_zincid_parser = tin_ops_subparser.add_parser("upload_zincid", help="upload existing zinc id annotated molecules to database, replacing existing ones or adding aliases where appropriate")
 tin_upload_zincid_parser.add_argument("source_dirs", nargs="+", help="directory(s) where zinc id & tranche split annotated files are stored")
 tin_upload_zincid_parser.add_argument("transaction_id", help="name of transaction for record keeping and synchronization with other databases")
+tin_upload_zincid_parser.add_argument("--diff-destination", required=True, help="where to export the database diff from this upload to")
 tin_upload_zincid_parser.set_defaults(func=wrpfnc(checktinpatches, checktinuptodate, tin_upload_zincid))
 
 tin_export_parser = tin_ops_subparser.add_parser("export", help="export database to disk")
