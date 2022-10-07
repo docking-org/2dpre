@@ -2,7 +2,7 @@
 
 ## description of files and subdirectories:
 
-- 2dload.py, load_app/, psql/ ::: zinc22 db operations code
+- *2dload.py, load_app/, psql/*
 
 	- These files encompass the python+postgres interface with individual zinc22 databases. Used to perform critical operations such as uploading, patching, and exporting
 	
