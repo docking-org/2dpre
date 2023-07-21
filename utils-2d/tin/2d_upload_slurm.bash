@@ -30,6 +30,13 @@ joblist_name="$logdir/joblist.txt"
 
 printf "" > $joblist_name
 
+if ! [ -z "$FAKE_UPLOAD" ]; then
+	extra_args="$extra_args --fake-upload"
+fi
+if ! [ -z "$justupdate" ]; then
+	extra_args="$extra_args --just-update-info"
+fi
+
 while IFS= read -r entry; do
 
 	echo "$entry"
@@ -75,12 +82,9 @@ while IFS= read -r entry; do
 	fi
 
 	if [ "$uploadtype" = "upload_zincid" ]; then
-		echo $HOST $port tin $uploadtype $source_dirs $catalogs >> $joblist_name
-		echo $HOST $port tin $uploadtype $source_dirs $catalogs
+		echo $HOST $port tin $uploadtype $extra_args --source-dirs="$source_dirs" --transaction-id="$catalogs" --diff-destination="$diff_destination" >> $joblist_name
+		echo $HOST $port tin $uploadtype $extra_args --source-dirs="$source_dirs" --transaction-id="$catalogs" --diff-destination="$diff_destination"
 	elif [ "$uploadtype" = "upload" ]; then
-		if ! [ -z "$justupdate" ]; then
-			extra_args="--just-update-info"
-		fi
 		echo $HOST $port tin $uploadtype $extra_args --source-dirs="$source_dirs" --catalogs="$catalogs" --diff-destination="$diff_destination" >> $joblist_name
 		echo $HOST $port tin $uploadtype $extra_args --source-dirs="$source_dirs" --catalogs="$catalogs" --diff-destination="$diff_destination"
 	else
@@ -94,6 +98,6 @@ done <<< "$(grep $HOST $BINDIR/common_files/database_partitions.txt)"
 
 njobs=$(cat $joblist_name | wc -l)
 
-# each machine has 80 cores, so each job will reserve 1/4 of the machines cpu power, which should be more than enough
-# this also means that other jobs will not interfere with the patching, while still allowing them some room
-sbatch -c 20 -a 1-$njobs%$NPARALLEL -o $logdir/%a.out -w $HOST -J z22_snup_$uploadtype $BINDIR/runjob_2dload_new.bash $joblist_name $BINDIR
+# these jobs should receive a lion's share of a machine's resources while they're executing
+# we want to avoid the OOM killer, therefore limit usage significantly
+sbatch --mem=50G -c 20 -a 1-$njobs%$NPARALLEL -o $logdir/%a.out -w $HOST -J z22_snup_$uploadtype $BINDIR/runjob_2dload_new.bash $joblist_name $BINDIR

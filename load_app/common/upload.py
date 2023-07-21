@@ -40,6 +40,7 @@ def check_transaction_started(transaction_identifier):
 #############
 
 def upload_complete(transaction_id):
+    if not transaction_id: return True # maybe an odd behavior, but it helps
     data = Database.instance.select("select svalue from meta where svalue = '{}' and varname = 'upload_name'".format(transaction_id))
     if not data.empty():
         return True

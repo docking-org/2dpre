@@ -7,6 +7,18 @@ from load_app.common.consts import *
 from load_app.tin.common import *
 from load_app.common.upload import make_hash_partitions, get_partitions_count, create_transaction_record_table, check_transaction_record, check_transaction_started, increment_version
 
+def find_source_file(source_dir, tranche, ext='.smi'):
+    hac = tranche[0:3]
+    p1 = os.path.join(source_dir, hac, tranche + ext)
+    p2 = os.path.join(source_dir, hac, tranche)
+    p3 = os.path.join(source_dir, tranche + ext)
+    p4 = os.path.join(source_dir, tranche)
+    for p in [p1, p2, p3, p4]:
+        if os.path.isfile(p):
+            return p
+    return None
+
+
 def create_source_file(source_dirs, cat_shortnames):
 
     database_port = Database.instance.port
@@ -24,7 +36,9 @@ def create_source_file(source_dirs, cat_shortnames):
             print("processing", tranche)
             tranche_id = get_tranche_id(tranche)
 
-            with open(source_dir + '/' + tranche, 'r') as tf:
+            srcf = find_source_file(source_dir, tranche)
+
+            with open(srcf, 'r') as tf:
                 for line in tf:
                     # we do a more sophisticated escape sequence using sed below
                     # this strategy could potentially add extra escape characters when they are not needed
@@ -34,6 +48,7 @@ def create_source_file(source_dirs, cat_shortnames):
                         psql_source_f.write(' '.join(tokens + [str(cat_id), str(tranche_id)]) + "\n")
 
     psql_source_f.close() 
+    subprocess.call(["chmod", "777", source_f])
     psql_source_f_t = open(source_f + '.t', 'w')
     subprocess.call(["sed", "-E", "s/\\\\/\\\\\\\\/g", psql_source_f.name], stdout=psql_source_f_t)
     #subprocess.call(["sed", "-E", "s/([^\\\\]+|^)(\\\\){1}([^\\\\]+|$)/\\1\\2\\2\\3/g", psql_source_f.name], stdout=psql_source_f_t)
@@ -87,17 +102,21 @@ def upload_partitioned(stage, partition_index, transaction_identifier, diff_dest
 #    return int(Database.instance.select("select ivalue from meta where svalue = 'n_partitions'").first()[0])
 
 def emulate_upload(args):
-    source_dirs = args.source_dirs
-    cat_shortnames = args.catalogs
+
+    source_dirs = args.source_dirs.split(',')
+    cat_shortnames = args.transaction_id.split('.')
     diff_destination = args.diff_destination
+
+    transaction_identifier = "_".join(cat_shortnames + (["update"] if args.just_update_info else []))
+    diff_destination = diff_destination + "/{}/{}".format(transaction_identifier, args.host+':'+str(args.port))
     diff_buckets = ["/sub", "/cat", "/catsub"] if not args.just_update_info else ["/sub_update_tranche_id", "/sup_update_cat_id"]
-    diff_destination = diff_destination + "/{}".format(args.host+':'+str(args.port))
     diff_locations =  [diff_destination + diff_bucket for diff_bucket in diff_buckets]
+    if args.fake_upload:
+        increment_version(transaction_identifier)
+        return True
 
     subprocess.call(["mkdir", "-p"] + diff_locations)
     subprocess.call(["chmod", "777"] + diff_locations)
-
-    transaction_identifier = "_".join(cat_shortnames + (["update"] if args.just_update_info else []))
     
     n_partitions = get_partitions_count()
 

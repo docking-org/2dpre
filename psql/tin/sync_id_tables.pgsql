@@ -11,10 +11,12 @@ begin;
 
 	select * from oid_to_pfk;
 
+	drop table if exists substance_id_new;
 	create table substance_id_new (sub_id bigint, sub_partition_fk smallint) partition by hash(sub_id);
 	call create_table_partitions('substance_id_new', '');
 	insert into substance_id_new(sub_id, sub_partition_fk) (select sb.sub_id, opfk.pfk from substance sb join oid_to_pfk opfk on sb.tableoid = opfk.toid);
 
+	drop table if exists catalog_id_new;
 	create table catalog_id_new (cat_content_id bigint, cat_partition_fk smallint) partition by hash(cat_content_id);
 	call create_table_partitions('catalog_id_new', '');
 	insert into catalog_id_new(cat_content_id, cat_partition_fk) (select cc.cat_content_id, opfk.pfk from catalog_content cc join oid_to_pfk opfk on cc.tableoid = opfk.toid);
@@ -27,5 +29,11 @@ begin;
 
 	alter table substance_id_new rename to substance_id;
 	alter table catalog_id_new rename to catalog_id;
+
+	drop table substance_id_trash;
+	drop table catalog_id_trash;
+
+	call rename_table_partitions('substance_id_new', 'substance_id');
+	call rename_table_partitions('catalog_id_new', 'catalog_id');
 
 commit;

@@ -47,11 +47,14 @@ pushd $BINPATH
 BINPATH=$PWD
 popd
 cd $WORKDIR
-TARGET=$(ls $SOURCE | awk -v x="$SOURCE/" '{print x $1 " " NR}' | grep -w $TASK_ID | awk '{print $1}')
+TARGET=$(head -n $TASK_ID $SOURCE | tail -n 1)
+#TARGET=$(ls $SOURCE | awk -v x="$SOURCE/" '{print x $1 " " NR}' | grep -w $TASK_ID | awk '{print $1}')
 echo "$(hostname)  ${JOB_ID}_${TASK_ID} $TARGET" > info
 ln -s $TARGET $(basename $TARGET)
 
 $BINPATH/zincload-catalog.sh --skip-resolution --skip-creation --skip-loading --skip-depletion --name working $(basename $TARGET)
 
 tail -n+2 working/23-selected-compounds.ism > $DEST/$(basename $TARGET)
-[ -z $SKIP_DELETE] && rm -r /scratch/2dpre_$(whoami)/${JOB_ID}_${TASK_ID}
+[ -z $SKIP_DELETE] && rm -r /scratch/2dpre_$(whoami)/${JOB_ID}_${TASK_ID} || printf ""
+
+exit 0

@@ -7,6 +7,10 @@ import gzip
 from load_app.common.consts import *
 from load_app.common.database import Database
 
+def get_tin_machines():
+    for host, port in Database.get_config_instance().select('select hostname, port from tin_machines order by hostname, port').data:
+        yield host, port
+
 def get_tranche_id(tranchename):
     data = Database.instance.select("select tranche_id from tranches where tranche_name = '{}'".format(tranchename)).first()[0]
     return int(data)
@@ -79,23 +83,10 @@ def zincid_to_subid_opt(infile, outfile, tranche_id, only_output_zincid=False, w
         fails = 0
         first = False
         zincid_pos = -1
+        smiles_pos = -1
         with src:
-            total=0
-            firstline = src.readline()
-            tokens = [t.decode('utf-8') for t in firstline.strip().split()]
-            # zincid is supposed to be in the first column, but this is not always the case
-            # to avoid annoying manual specification of the column every time, automatically detect it here
-            for i, tok in enumerate(tokens):
-                if tok.startswith("ZINC") and len(tok) == 16:
-                    zincid_pos = i
-                    break
-            if zincid_pos == -1:
-                raise Exception("couldn't find a zinc id in the first line of this file! exiting!")
-            else:
-                print("found zincid pos: {}".format(zincid_pos))
-            for line in src:
-                total += 1
-                tokens = line.strip().split()
+            def writeout(tokens):
+                nonlocal fails
                 zincid = tokens[zincid_pos]
                 try:
                     sub_id = base62_rev_zincid(zincid[6:])
@@ -104,11 +95,36 @@ def zincid_to_subid_opt(infile, outfile, tranche_id, only_output_zincid=False, w
                     fails += 1
                     if (fails/total) > 0.25:
                         raise Exception("too many parsing failures!")
-                    continue
+                    return
                 if not only_output_zincid:
-                    out.write(" ".join(tokens[:zincid_pos-1] + [str(sub_id), str(tranche_id)] + tokens[:zincid_pos-1] + tokens[zincid_pos:]) + "\n")
+                    out.write(" ".join([str(sub_id), str(tranche_id)] + [tokens[smiles_pos]]) + "\n")
                 else:
                     out.write(" ".join([str(sub_id), str(tranche_id)]) + "\n")
+            total=0
+            firstline = src.readline().decode('utf-8')
+            tokens = firstline.strip().split()
+            if len(tokens) == 0:
+                return
+            # zincid is supposed to be in the first column, but this is not always the case
+            # to avoid annoying manual specification of the column every time, automatically detect it here
+            for i, tok in enumerate(tokens):
+                if tok.startswith("ZINC") and len(tok) == 16:
+                    if len(tokens) == 2: # we also need to figure out where smiles are- sigh
+                        smiles_pos = abs(i-1) # usually we are reading in a file with two columns- zinc id + smiles. if we aren't, rewrite this code some more
+                    zincid_pos = i
+                    break
+            writeout(tokens)
+            if zincid_pos == -1:
+                raise Exception("couldn't find a zinc id in the first line of this file! exiting!")
+            else:
+                print("found zincid pos: {}".format(zincid_pos))
+            for line in src:
+                line = line.decode('utf-8')
+                total += 1
+                tokens = line.strip().split()
+                if len(tokens) < 2:
+                    continue
+                writeout(tokens)
     print("total mols={}".format(total))
 
 def subid_to_zincid_opt(infile, outfile, tranche_name, subid_pos):

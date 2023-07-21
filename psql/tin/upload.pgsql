@@ -148,7 +148,10 @@ begin;
 				where
 					ns.rn = 1
 			);*/
-			execute(format('copy (insert into substance_p%s (smiles, sub_id, tranche_id) (select smiles, sub_id, tranche_id from new_substances ns where ns.rn = 1) returning *) to ''%s/sub/%s''', part, diff_file_dest, part));
+			execute(format('insert into substance_p%s (smiles, sub_id, tranche_id) (select smiles, sub_id, tranche_id from new_substances ns where ns.rn = 1)', part));
+			-- do the substance diff a little differently- we want to export old as well as new, and include tranche name for convenience
+			execute(format('copy (select smiles, sub_id, tr.tranche_name, tr.tranche_id from new_substances ns join tranches tr on tr.tranche_id = ns.tranche_id where ns.rn = 1) to ''%1$s/sub/%2$s.new''', diff_file_dest, part));
+			execute(format('copy (select smiles, sub_id, tr.tranche_name, tr.tranche_id from temp_load_part_sub ts join tranches tr on tr.tranche_id = ts.tranche_id where not sub_id is null) to ''%1$s/sub/%2$s.old''', diff_file_dest, part));
 
 			execute(format('insert into substance_id (sub_id, sub_partition_fk) (select sub_id, %s from new_substances ns where ns.rn = 1)', part));
 					
@@ -310,52 +313,31 @@ begin;
 			create temporary table temp_load_part_catsub (
 				sub_id bigint,
 				code_id bigint,
-				cat_sub_itm_id bigint,
-				tranche_id smallint,
-				temp_id int default nextval('tl_temp_id_seq')
+				present bool
 			);
 
-			execute(format('insert into temp_load_part_catsub(sub_id, code_id, cat_sub_itm_id, tranche_id) (select tl.sub_id, tl.code_id, cs.cat_sub_itm_id, tl.tranche_id from temp_load_p3_p%s tl left join catalog_substance_p%s cs on tl.sub_id = cs.sub_id_fk and tl.code_id = cs.cat_content_fk)', part, part));
-			alter table temp_load_part_catsub add primary key (temp_id);
+			execute(format('insert into temp_load_part_catsub(sub_id, code_id, present) (select tl.sub_id, tl.code_id, not cs.sub_id_fk is null from temp_load_p3_p%s tl left join catalog_substance_p%s cs on tl.sub_id = cs.sub_id_fk and tl.code_id = cs.cat_content_fk)', part, part));
+			--alter table temp_load_part_catsub add primary key (temp_id);
 
 			select count(*) from temp_load_part_catsub into cntupload;
 
 			create temporary table new_entries (
 				sub_id bigint,
 				code_id bigint,
-				cat_sub_itm_id bigint,
-				tranche_id smallint,
-				rn int,
-				temp_id int
+				rn int
 			);
 
-			alter table new_entries add constraint temp_id_fk foreign key (temp_id) references temp_load_part_catsub(temp_id);
+			--alter table new_entries add constraint temp_id_fk foreign key (temp_id) references temp_load_part_catsub(temp_id);
 
-			insert into new_entries (
+			insert into new_entries(sub_id, code_id, rn) (
 				select
 					t.sub_id,
 					t.code_id,
-					min(t.cat_sub_itm_id) over w as cat_sub_itm_id,
-					t.tranche_id,
-					ROW_NUMBER() over w as rn,
-					t.temp_id
+					ROW_NUMBER() over (partition by sub_id, code_id) as rn
 				from
-				(
-					select
-						tl.sub_id,
-						tl.code_id,
-						case when ROW_NUMBER() over w = 1 then nextval('cat_sub_itm_id_seq') else null end as cat_sub_itm_id,
-						tl.tranche_id,
-						tl.temp_id
-					from
-						temp_load_part_catsub tl
-					where
-						tl.cat_sub_itm_id is null
-					window w as
-						(partition by sub_id, code_id)
-				) t
-				window w as
-					(partition by sub_id, code_id)
+					temp_load_part_catsub t
+				where
+					not t.present
 			);
 
 			select count(*) from new_entries where rn = 1 into cntnew;
@@ -375,7 +357,7 @@ begin;
 			);
 			*/
 
-			execute(format('copy (insert into catalog_substance_p%s (sub_id_fk, cat_content_fk, tranche_id, cat_sub_itm_id) (select sub_id, code_id, tranche_id, cat_sub_itm_id from new_entries where rn = 1) returning *) to ''%s/catsub/%s''', part, diff_file_dest, part));
+			execute(format('copy (insert into catalog_substance_p%s (sub_id_fk, cat_content_fk) (select sub_id, code_id from new_entries where rn = 1) returning *) to ''%s/catsub/%s''', part, diff_file_dest, part));
 
 			execute(format('insert into transaction_record_%s (stagei, parti, nnew, nupload) (values (3, %s, %s, %s))', transid, part, cntnew, cntupload));
 

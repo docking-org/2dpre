@@ -1,1 +1,1 @@
-/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/zinc22_stats/statistics/tranche_mappings/current_databases_01_21_2022.txt
+/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/zinc22_stats/statistics/tranche_mappings/current_databases_03_22_2023.txt

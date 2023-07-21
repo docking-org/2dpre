@@ -6,6 +6,7 @@ import subprocess
 from datetime import datetime
 from load_app.common.consts import *
 from load_app.common.upload import get_version
+from load_app.common.database import Database
 from load_app.antimony.common import antimony_src_dir, antimony_stage_dir, antimony_partition_map, num_digits, get_machine_id
 
 # exporting to antimony is a two-step process
@@ -27,7 +28,7 @@ def export_all_from_tin():
         subprocess.call(["chmod", "777", machine_stage_dir])
 
         # implemented a versioning system for tin so that we don't get confused about which export is what
-        tin_version = tin_get_version(port)
+        tin_version = get_version()
         dest = machine_stage_dir + "/" + str(tin_version) + ".txt"
 
         if os.path.exists(dest + ".gz"):
@@ -45,7 +46,7 @@ def export_all_from_tin():
         psqlvars = {
                         "output_file" : dest
         }
-        code = Database.instance.call_file(BINDIR + "/psql/tin_antimony_export.pgsql", vars=psqlvars)
+        code = Database.instance.call_file(BINDIR + "/psql/tin/antimony_export.pgsql", vars=psqlvars)
 
         if code != 0:
                 print("failed!")

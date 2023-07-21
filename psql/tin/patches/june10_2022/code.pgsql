@@ -10,7 +10,20 @@ begin
 		return null;
 	end if;
 	select cat_partition_fk from catalog_id ccid where ccid.cat_content_id = cc_id_q into part_id;
-	execute(format('select supplier_code from catalog_content_p%s where cat_content_id = %s', part_id, cc_id_q)) into code;
+	if not cat_partition_fk is null then
+		execute(format('select supplier_code from catalog_content_p%s where cat_content_id = %s', part_id, cc_id_q)) into code;
+	end if;
+	-- only try again once
+	if code is null;
+		select cat_id_right from cat_dups_corrections into cc_id_q;
+		if cc_id_q is null then
+			return null;
+		end if;
+		select cat_partition_fk from catalog_id ccid where ccid.cat_content_id = cc_id_q into part_id;
+		if cat_partition_fk is null then
+			return null;
+		end if;
+		execute(format('select supplier_code from catalog_content_p%s where cat_content_id = %s', part_id, cc_id_q)) into code;
 	return code;
 end;
 
@@ -88,6 +101,9 @@ begin
 		end if;
 		select sub_partition_fk from substance_id sbid where sbid.sub_id = sub_id_q into part_id;
 	end if;
+	if part_id is null then
+		return null;
+	end if;
 	execute(format('select smiles::varchar from substance_p%s where sub_id = %s', part_id, sub_id_q)) into sub;
 	return sub;
 end;
@@ -115,11 +131,15 @@ declare
 begin
 	select sub_partition_fk from substance_id sbid where sbid.sub_id = sub_id_q into part_id;
 	if part_id is null then
+		-- this actually implies limit 1, for some reason when you use a values statement instead of a table, it gives an error
 		select sub_id_right from sub_dups_corrections where sub_id_wrong = sub_id_q into sub_id_q;
 		if sub_id_q is null then
 			return null;
 		end if;
 		select sub_partition_fk from substance_id sbid where sbid.sub_id = sub_id_q into part_id;
+	end if;
+	if part_id is null then
+		return null;
 	end if;
 	execute(format('select tranche_id::smallint from substance_p%s where sub_id = %s', part_id, sub_id_q)) into tranche_id;
 	return tranche_id;

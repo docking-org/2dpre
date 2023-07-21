@@ -191,7 +191,7 @@ $$;
 				execute(format('drop table subids_by_pfk_p%s', i));
                         end loop;
 
-                        execute(format('insert into %1$s (sub_id %2$s) (select sub_id %2$s from subids_by_pfk_pn)', substance_output_tabname, extra_cols_decl));
+                        execute(format('insert into %1$s (sub_id, smiles, tranche_id %2$s) (select sub_id, get_substance_by_id(sub_id) as smiles, get_tranche_by_id(sub_id) as tranche_id %2$s from subids_by_pfk_pn)', substance_output_tabname, extra_cols_decl));
 
 			if input_pre_partitioned then
 				execute(format('alter table subids_by_subid rename to %s', sub_id_input_tabname));

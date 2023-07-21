@@ -1,4 +1,5 @@
 import subprocess
+from load_app.common.consts import *
 
 class SelectResult:
     def __init__(self):
@@ -9,7 +10,7 @@ class SelectResult:
         if echo:
             for l in data.split("\n"):
                 print(l)
-        if "ROLLBACK" in data:
+        if "ROLLBACK" in data or ("BEGIN" in data and not ("COMMIT" in data)):
             sp.wait()
             self.code = 1
         else:
@@ -106,9 +107,18 @@ class Database:
             raise Exception(f"database exception code={res.code} file={filename}")
         return res
 
-    def set_instance(host, port, user, db):
-        setattr(Database, 'instance', Database(None, None, None, None))
-        Database.instance.host = host
-        Database.instance.port = port
-        Database.instance.user = user
-        Database.instance.db = db
+    @classmethod
+    def get_config_instance(cls):
+        config_instance = getattr(Database, '_config_instance', None)
+        if not config_instance:
+            config_instance = cls.set_instance(CONFIG_DB_HOST, CONFIG_DB_PORT, CONFIG_DB_USER, CONFIG_DB_NAME, instancename='_config_instance')
+        return config_instance
+
+    def set_instance(host, port, user, db, instancename='instance'):
+        db_instance = Database(None, None, None, None)
+        db_instance.host = host
+        db_instance.port = port
+        db_instance.user = user
+        db_instance.db = db
+        setattr(Database, instancename, db_instance)
+        return db_instance

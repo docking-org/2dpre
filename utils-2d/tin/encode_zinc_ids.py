@@ -6,7 +6,7 @@ parser.add_argument("source", type=str)
 parser.add_argument("target", type=str)
 args = parser.parse_args()
 
-if not os.path.isfile(args.source):
+if not args.source == '-' and not os.path.isfile(args.source):
 	print("source is not a file!")
 	sys.exit(1)
 
@@ -22,9 +22,14 @@ def base62(n):
     b62_str += digits[n]
     return ''.join(reversed(b62_str))
 
+if args.source == '-':
+	sourcefile = sys.stdin
+else:
+	sourcefile = open(args.source, 'r')
+
 with open(args.target, 'w') as targetfile:
 
-	with open(args.source, 'r') as sourcefile:
+	with sourcefile:
 
 		for line in sourcefile:
 

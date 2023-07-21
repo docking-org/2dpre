@@ -6,6 +6,7 @@ input_file=$1
 canon_out=${2}.canon.smi
 noncanon_out=${2}.noncanon.smi
 
+# this particular script uses the same environment as the preprocessing scripts
 python=/nfs/soft/www/apps/tin01/envs/development/bin/python
 
 if ! [[ "$input_file" == *'.gz' ]]; then

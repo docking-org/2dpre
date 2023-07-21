@@ -1,9 +1,42 @@
-sz_mz
-zinc1to8
-sv
-sv_update
-informer
-informer2
-mv
-real
-zinc1to17
+TRANS_ID	OPTYPE		OPTIONAL	SOURCE
+sz_mz		upload		no		/nfs/exb/zinc22/2dpre_results/sz,/nfs/exb/zinc22/2dpre_results/mz
+zinc1to8	upload_zincid	no		/nfs/exb/zinc22/export/full/2d-08
+sv		upload		no		/nfs/exb/zinc22/2dpre_results/sv
+sv_update	upload_update	no		/nfs/exb/zinc22/2dpre_results/sv
+informer	upload		no		/nfs/exb/zinc22/2dpre_results/informer
+informer2	upload		no		/nfs/exb/zinc22/2dpre_results/informer
+mv		upload		no		/nfs/exb/zinc22/2dpre_results/mv
+real		upload		no		/nfs/exb/zinc22/2dpre_results/real
+zinc1to17	upload_zincid	no		/nfs/exb/zinc22/export/full/2d-17
+zinc1to12	upload_zincid	no		/nfs/exb/zinc22/export/full/2d-12
+sd		upload		no		/nfs/exb/zinc22/2dpre_results/sd
+zinc3Dv1*	upload_zincid	yes		/nfs/exb/zinc22/2dpre_results/zinc3Dv1
+zinc3Dv1_r1*	upload_zincid	yes		/nfs/exb/zinc22/2dpre_results/zinc3Dv1
+# i fudged this for n-9-19:5436, n-9-19:5437, n-9-38:5440
+zinc3Dv1_r2	upload_zincid	no		/nfs/exb/zinc22/2dpre_results/zinc3Dv1
+md		upload		no		/nfs/exb/zinc22/2dpre_results/md
+md_gn*		groupnorm	yes		NULL
+# these were all added for testing, they can be ignored/done later
+sd_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/sd
+real_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/real
+informer_rld*	upload		yes		/nfs/exb/zinc22/2dpre_results/informer
+wuxi_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/wuxi
+mcule_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/mcule_reload
+s_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/s
+m_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/m
+su_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/su
+mu_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/mu
+sv_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/sv
+mv_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/mv
+sx_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/sx
+mx_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/mx
+sz_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/sz
+mz_reload*	upload		yes		/nfs/exb/zinc22/2dpre_results/mz
+# this groupnorm uses a different algorithm- doesn't normalize supplier code entries, just groups them. some databases will have normalized codes & some won't
+md_gn2		groupnorm	no		NULL
+# tarball_ids can be found @ /nfs/exj/zinc22/btinglework/data/all_3d_tarball_ids.txt
+md_diff		diff3d		no		/nfs/exj/zinc22/btinglework/output/makemaps
+wuxi2		upload		no		/nfs/exb/zinc22/2dpre_results/wuxi2
+sq		upload		no		/nfs/exb/zinc22/2dpre_results/sq
+Q1_EN_screening_selected	upload	no	/nfs/exb/zinc22/2dpre_results/Q1_EN_screening_selected
+mq		upload		no		/nfs/exb/zinc22/2dpre_results/mq
