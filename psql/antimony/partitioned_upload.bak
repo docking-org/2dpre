@@ -1,0 +1,107 @@
+			/* BEGIN GENERALIZATION REWRITE */
+                        -- inputs: loadtable::text, desttable::text, nexttable::text, keyfield::text, idfield::text, destseq::text
+
+                        /*
+                        destcolumns := loadtable & desttable - keyfield - idfield
+                        loadcolumns := loadtable - keyfield  - idfield
+                        nextcolumns := loadtable & nexttable - idfield*/
+
+	create or replace function get_shared_columns (tab1 text, tab2 text, excl1 text, excl2 text[]) returns text[] as $$
+		declare
+			shared_cols text[];
+		begin
+			select into shared_cols array_agg(concat(t1.col, ':', t1.dtype)) from (select attname as col, atttypid::regtype as dtype from pg_attribute where attrelid = tab1) t1 inner join (select attname as col, atttypid::regtype as dtype from pg_attribute where attrelid = tab2) t2 on t1.col = t2.col where t1.col != excl1 and not t1.col in excl2;
+			return shared_cols;
+		end;
+	$$ language plpgsql;
+
+	create or replace function sc_colname(scol text) returns text as $$
+		begin
+			return SPLIT_PART(scol, ':', 1)
+		end;
+	$$ language plpgsql;
+
+	create or replace function sc_coltype(scol text) return text as $$
+		begin
+			return SPLIT_PART(scol, ':', 2)
+		end;
+	$$ language plpgsql;
+
+	create or replace function cols_declare(cols text[], tabprefix text) return text as $$
+		begin
+			if not tabprefix is null then
+				return tabprefix || array_to_string(cols, ', ' || tabprefix);
+			else
+				return array_to_string(cols, ', ');
+			end if;
+		end;
+	$$ language plpgsql;
+
+	create or replace function cols_declare_join(cols text[], t1 text, t2 text) returns text as $$
+		begin
+		end;
+	$$ language plpgsql;
+
+	create or replace function upload_bypart(loadtable text, desttable text, nexttable text, keyfields text[], idfield text, destseq text, filediff text) returns int as $$
+
+		declare
+
+                        destcolumns text[];
+                        loadcolumns text[];
+                        nextcolumns text[];
+			query text;
+		begin
+			-- columns shared between load table and dest table, keyfields are assumed to be shared (thus will not be included in list of shared columns)
+			destcolumns := get_shared_columns(loadtable, desttable, idfield, keyfields);
+			-- columns of the load table (minus keyfields + idfield)
+			loadcolumns := get_shared_columns(loadtable, loadtable, idfield, keyfields);
+			-- columns shared between the load table and the next stage table (what data do we pass on to the next stage, idfield is assumed to be passed, but not keyfields)
+			nextcolumns := get_shared_columns(loadtable, nexttable, idfield, '');
+
+			-- allocate temporary table for calculations
+			create temporary sequence temp_seq;
+			create temporary table temp_table_load (temp_id int default nextval('temp_seq'));
+			execute(format('alter table temp_table_load add column %s %s', sc_colname(idfield), sc_coltype(idfield)));
+			for col in keyfields loop
+				execute(format('alter table temp_table_load add column %s %s', sc_colname(col), sc_coltype(col)));
+			end loop;
+                        for col in loadcolumns loop
+                                execute(format('alter table temp_table_load add column %s %s', sc_colname(col), sc_coltype(col)));
+                        end loop;
+
+			-- join input table to destination table on keyfields and store result in temporary table
+                        execute(format('insert into temp_table_load(%1$s, %2$s, %3$s) (select t.%1$s, s.%2$s, %4$s from %5$s_p%6$s t left join %7$s_p%6$s s on %8$s)', sc_colname(idfield), cols_declare(keyfields), cols_declare(loadcolumns, ''), cols_declare(loadcolumns, 't.'), loadtable, partition, desttable, cols_declare_join(keyfields, 't', 's'));
+
+			-- create second temporary table to store just entries new to the destination table
+                        execute(format('create temporary table new_entries (%1$s %2$s, temp_id int)', sc_colname(idfield), sc_coltype(idfield)));
+			for col in keyfields loop
+				execute(format('alter table new_entries add column %s %s', sc_colname(col), sc_coltype(col)));
+			end loop;
+
+			-- locate all entries new to destination table and assign them a new sequential ID, storing in the temporary table we just created
+                        execute(format('insert into new_entries(%1$s, %2$s) (select %1$s, min(%2$s) over w as %2$s, ROW_NUMBER() over w as rn, temp_id from (select %3$s, case when ROW_NUMBER() over w = 1 then nextval(''%4$s'') else null end as %2$s, t.temp_id from temp_table_load t where t.%2$s is null window w as (partition by %3$s)) t)', cols_declare(keyfields), sc_colname(idfield), cols_declare(keyfields, '.t'), destseq));
+
+			-- finally, insert new entries to destination table
+			query := format('insert into %1$s_p%2$s (%3$s, %4$s, %5$s) (select %6$s, n.%4$s, %7$s from new_entries n left join temp_table_load t on n.temp_id = t.temp_id where n.rn = 1)', desttable, partition, cols_declare(keyfields), sc_colname(idfield), cols_declare(destcolumns, ''), cols_declare(keyfields, 'n.'), cols_declare(destcolumns, 't.'));
+
+			-- save the diff to an external file (if specified)
+			if not filediff is null then
+				query := 'copy (' || query || ' returning *) to ''' || filediff || '''';
+			end if;
+
+			execute(query);
+
+			-- move data to next stage (if applicable)
+			if not nexttable is null then
+				query := format('insert into %1$s_p%2$s(%3$s, %4$s) (select %3$s, case when t.%4$s is null then n.%4$s else t.%4$s end from temp_table_load t left join new_entries n on t.temp_id = n.temp_id)', nexttable, partition, cols_declare(nextcolumns), sc_colname(idfield));
+				execute(query);
+			end if;
+
+			-- clean up!
+			drop table temp_table_load;
+			drop sequence temp_seq;
+			drop table new_entries;
+
+                        /* END GENERALIZATION REWRITE */
+		end
+	$$ language plpgsql;

@@ -61,6 +61,13 @@ begin;
 	begin
 		return (select ivalue from meta where svalue = 'n_partitions' limit 1);
 	end $$ language plpgsql;
+
+	-- number of iterations is equal to the size of the largest group, G (i think?)
+	-- however time complexity is /not/ O(N*G), where N is the size of the database
+	-- we only operate on groups whose membership has not yet been fully explored, so small groups (which make up the majority of groups) will be excluded quickly
+	-- thus by the second iteration the dataset will be much reduced
+	-- worst-case performance would occur if the entire dataset were linked together (i think?)
+	-- performance is a bit hard to quantify, but this is definitely an efficient way to do this for our case
 	do $$
 	declare
 		i int;

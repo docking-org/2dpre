@@ -14,9 +14,7 @@ begin;
 			select ivalue from meta where svalue = 'n_partitions' limit 1 into n_partitions;
 
 			for i in 0..(n_partitions-1) loop
-
 				execute(format('create %s table %s_p%s partition of %s for values with (modulus %s, remainder %s)', tmp, tabname, i, tabname, n_partitions, i));
-
 			end loop;
 
 		end;

@@ -1,0 +1,30 @@
+LOAD 'auto_explain';
+SET auto_explain.log_nested_statements = ON;
+SET auto_explain.log_min_duration = 10;
+SET client_min_messages to log;
+set enable_partitionwise_aggregate=on;
+
+begin;
+	create or replace procedure delete_codes(diff_destination text) as
+		$$
+		declare
+			i int;
+			n_partitions int;		
+			diff_fn text;	
+		begin
+			select ivalue from meta where svalue = 'n_partitions' limit 1 into n_partitions;
+			
+			for i in 0..(n_partitions-1) loop
+				raise info '||| % ||| % |||', i, clock_timestamp();
+				select concat(diff_destination, '/s_codes_deleted/', format('%s', i)) into diff_fn;
+				execute format('create table cat_s_codes_p%s(sub_id_fk bigint, cat_content_fk bigint, cat_id_fk int, supplier_code text)', i);
+				execute format('insert into cat_s_codes_p%s select sub_id_fk, cat_content_fk, cat_id_fk, supplier_code from catalog_substance_p%s join catalog_content on catalog_substance_p%s.cat_content_fk = catalog_content.cat_content_id and supplier_code like ''s_%%''', i, i, i, i);
+				execute format('copy (select * from cat_s_codes_p%s) to ''%s''', i, diff_fn);
+				execute format('drop table cat_s_codes_p%s', i);
+			end loop;
+		end;
+	$$ language plpgsql;
+
+	call delete_codes(:'diff_destination');
+rollback;
+

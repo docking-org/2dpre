@@ -19,9 +19,9 @@ begin;
 	-- Moral of the story is I chose a half measure when I should have gone all the way. I'll never make that mistake again. (https://www.youtube.com/watch?v=YSrvFjT0vmY)
 	-- that being said, the half-system I've come up with is... serviceable. It can be both inserted to and selected from with reasonable efficiency, especially for large queries.
 	-- anyways, rant over. Woe be to any developer from the future peeking under the hood of this jalopy.
-	delete from substance_id sid using weirdmols w where sid.sub_id = w.sub_id;
-	create table weirdmols_catsub (like catalog_substance);
-	insert into weirdmols_catsub(sub_id_fk, cat_content_fk, tranche_id, cat_sub_itm_id) (select cs.sub_id_fk, cs.cat_content_fk, cs.tranche_id, cs.cat_sub_itm_id from catalog_substance cs join weirdmols w on w.sub_id = cs.sub_id_fk);
-	delete from catalog_substance cs using weirdmols_catsub w where cs.sub_id_fk = w.sub_id_fk;
-	delete from catalog_substance_cat csc using weirdmols_catsub w where csc.cat_content_fk = w.cat_content_fk and csc.sub_id_fk = w.sub_id_fk;
+	-- delete from substance_id sid using weirdmols w where sid.sub_id = w.sub_id;
+	-- create table weirdmols_catsub (like catalog_substance);
+	-- insert into weirdmols_catsub(sub_id_fk, cat_content_fk, tranche_id) (select cs.sub_id_fk, cs.cat_content_fk, cs.tranche_id, from catalog_substance cs join weirdmols w on w.sub_id = cs.sub_id_fk);
+	-- delete from catalog_substance cs using weirdmols_catsub w where cs.sub_id_fk = w.sub_id_fk;
+	-- delete from catalog_substance_cat csc using weirdmols_catsub w where csc.cat_content_fk = w.cat_content_fk and csc.sub_id_fk = w.sub_id_fk;
 commit;

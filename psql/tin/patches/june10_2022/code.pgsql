@@ -14,7 +14,7 @@ begin
 		execute(format('select supplier_code from catalog_content_p%s where cat_content_id = %s', part_id, cc_id_q)) into code;
 	end if;
 	-- only try again once
-	if code is null;
+	if code is null then
 		select cat_id_right from cat_dups_corrections into cc_id_q;
 		if cc_id_q is null then
 			return null;
@@ -24,6 +24,7 @@ begin
 			return null;
 		end if;
 		execute(format('select supplier_code from catalog_content_p%s where cat_content_id = %s', part_id, cc_id_q)) into code;
+	end if;
 	return code;
 end;
 

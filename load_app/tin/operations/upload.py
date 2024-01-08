@@ -13,7 +13,7 @@ def find_source_file(source_dir, tranche, ext='.smi'):
     p2 = os.path.join(source_dir, hac, tranche)
     p3 = os.path.join(source_dir, tranche + ext)
     p4 = os.path.join(source_dir, tranche)
-    for p in [p1, p2, p3, p4]:
+    for p in [p1, p2, p3, p4] + [_p+'.gz' for _p in [p1, p2, p3, p4]]:
         if os.path.isfile(p):
             return p
     return None
@@ -56,7 +56,8 @@ def create_source_file(source_dirs, cat_shortnames):
     os.rename(psql_source_f_t.name, psql_source_f.name)
     return source_f
 
-def partition_and_upload_input_data(source_dirs, cat_shortnames):
+def partition_and_upload_input_data(source_dirs, cat_shortnames, super_id=0):
+    config_db = Database.get_config_instance()
 
     source_f = create_source_file(source_dirs, cat_shortnames)
     n_partitions = get_partitions_count()
@@ -73,6 +74,17 @@ def partition_and_upload_input_data(source_dirs, cat_shortnames):
     Database.instance.call("create table temp_load_p3 (sub_id bigint, code_id bigint, tranche_id smallint) partition by hash(sub_id)")
     make_hash_partitions("temp_load_p3", n_partitions)
 
+    Database.instance.call("drop table if exists temp_load_p4");
+    Database.instance.call("create table temp_load_p4 (code_id bigint) partition by hash(code_id)")
+    make_hash_partitions("temp_load_p4", n_partitions)
+
+    Database.instance.call("drop table if exists temp_load_super_ids")
+    Database.instance.call("create table temp_load_super_ids(name text, cat_id int)")
+    names = config_db.select("select catalog_name from catalog_assoc where super_id = {}".format(super_id))
+    for name in names.all():
+        Database.instance.call("insert into temp_load_super_ids(name) (values ('{}'))".format(name))
+    Database.instance.call("update temp_load_upser_ids tl set cat_id = c.cat_id from catalog c where name = c.short_name")
+
     source_file = open(source_f, 'r')
     code = Database.instance.call("copy temp_load_p1(smiles, code, cat_id, tranche_id) from STDIN delimiter ' '", sp_kwargs={"stdin" : source_file})
     if not code == 0:
@@ -81,6 +93,7 @@ def partition_and_upload_input_data(source_dirs, cat_shortnames):
     Database.instance.call("analyze temp_load_p1")
     Database.instance.call("analyze temp_load_p2")
     Database.instance.call("analyze temp_load_p3")
+    Database.instance.call("analyze temp_load_p4")
 
     return n_partitions
 
@@ -106,6 +119,7 @@ def emulate_upload(args):
     source_dirs = args.source_dirs.split(',')
     cat_shortnames = args.transaction_id.split('.')
     diff_destination = args.diff_destination
+    super_id = args.super_id
 
     transaction_identifier = "_".join(cat_shortnames + (["update"] if args.just_update_info else []))
     diff_destination = diff_destination + "/{}/{}".format(transaction_identifier, args.host+':'+str(args.port))
@@ -126,9 +140,10 @@ def emulate_upload(args):
         if code == 0:
             increment_version(transaction_identifier)
         return True
+    
 
     if not check_transaction_started(transaction_identifier):
-        partition_and_upload_input_data(source_dirs, cat_shortnames)
+        partition_and_upload_input_data(source_dirs, cat_shortnames, super_id=super_id)
         if not create_transaction_record_table(transaction_identifier):
             return False
 
@@ -147,6 +162,12 @@ def emulate_upload(args):
         if check_transaction_record(transaction_identifier, 3, i):
             continue
         upload_partitioned(3, i, transaction_identifier, diff_destination)
+    if super_id != 0:
+        for i in range(n_partitions):
+            print(4, i)
+            if check_transaction_record(transaction_identifier, 4, i):
+                continue
+            upload_partitioned(4, i, transaction_identifier, diff_destination)
 
     increment_version(transaction_identifier)
 

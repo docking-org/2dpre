@@ -40,6 +40,11 @@ def is_job_running(subsystem, host, port):
 			return True, optype, job_id, job_status, job_duration, trans_id
 	return False, None, None, None, None, None
 
+# will synchronize all upload, upload_zincid, groupnorm operations
+def synchronize_all(preprocessing_dir, diff_destination, tarball_ids, exclude):
+	present_mandatory, missing_mandatory, present_optional, missing_optional, valid_optional, id_to_optype = check_upload_history()
+	pass
+
 stop = False
 def handle_int(sig, frame):
 	global stop
@@ -50,31 +55,40 @@ all_machines = []
 valid_m = []
 invalid_m = []
 if args.machines:
-	all_machines = [(e.split(':')[0], e.split(':')[1]) for e in args.machines.split(',')]
+	all_machines = [(e.split(':')[0], e.split(':')[1]) for e in args.machines.split(',')]	
 else:
 	if args.subsystem == 'tin':
 		all_machines = get_tin_machines()
 	else:
 		all_machines = get_antimony_machines()
-for hostname, hostname_group in groupby(list(all_machines), lambda x:x[0]):
+
+
+for hostname, hostname_group in groupby(list(all_machines), lambda x:x[0]):	
+	
 	if stop:
 		break
 	to_submit = []
 	for hostname, port in hostname_group:
 		setattr(args, 'port', int(port))
 		Database.set_instance(hostname, port, args.subsystem + 'user', args.subsystem)
+		
 		logstr = ''
 		logjob = ''
 		try:
 			logstr = '{}:{}:::validation ok'.format(hostname, port)
 			is_running, optype, job_id, status, duration, trans_id = is_job_running(args.subsystem, hostname, port)
+			
 			if not is_running:
-				args.func(args)
+				
+				# args.func(args)
+				
 				to_submit.append((hostname, port))
 				valid_m.append((hostname, port))
+				
 			else:
 				logjob = ':::job is running type={} transaction={} id={} status={} duration={}'.format(optype, trans_id, job_id, status, duration)
-				args.func(args)
+
+				# args.func(args)
 				valid_m.append((hostname, port))
 			logging.info(logstr + logjob)
 		except Exception as e:

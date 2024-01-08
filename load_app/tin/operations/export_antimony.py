@@ -2,7 +2,7 @@ import os
 import sys
 import gzip
 import subprocess
-
+import shutil
 from datetime import datetime
 from load_app.common.consts import *
 from load_app.common.upload import get_version
@@ -17,19 +17,19 @@ from load_app.antimony.common import antimony_src_dir, antimony_stage_dir, antim
 # 
 # the second step is to sort the exported supplier codes from the database into their respective buckets
 # the split files will serve as the raw files to be uploaded to antimony partitions
-def export_all_from_tin():
-
+def export_all_from_tin(transaction_name):
         hostname = Database.instance.host
         port = Database.instance.port
 
         #hostname = os.uname()[1]
-        machine_stage_dir = antimony_stage_dir + "/" + hostname + "_" + str(port)
+        machine_stage_dir = antimony_stage_dir + "/"+ transaction_name + "/" + hostname + "_" + str(port)
         subprocess.call(["mkdir", "-p", machine_stage_dir])
         subprocess.call(["chmod", "777", machine_stage_dir])
 
         # implemented a versioning system for tin so that we don't get confused about which export is what
         tin_version = get_version()
-        dest = machine_stage_dir + "/" + str(tin_version) + ".txt"
+        dest = machine_stage_dir + "/" + str(tin_version)
+
 
         if os.path.exists(dest + ".gz"):
                 print("found an existing full export @ {}. It seems to have completed, if you wish to re-export please delete the file and try again. Be careful!".format(dest + '.gz'))
@@ -42,68 +42,97 @@ def export_all_from_tin():
                 #split_antimony_partitions(hostname, port, dest, suffix=str(tin_version))
                 print("found an existing full export @ {}. It doesn't seem to have completed, but this process will abort anyhow. If you wish to export delete the file and try again.".format(dest))
                 return False
+ 
+                
+        if not os.path.exists(dest):
+                os.mkdir(dest)
+                subprocess.call(["chmod", "777", dest])
 
         psqlvars = {
-                        "output_file" : dest
+                        "output_file" : dest,
+                        "num_digits": num_digits,
+                        "machine_id": get_machine_id(hostname, port)
         }
         code = Database.instance.call_file(BINDIR + "/psql/tin/antimony_export.pgsql", vars=psqlvars)
 
-        if code != 0:
-                print("failed!")
-                if os.path.exists(dest):
-                        os.remove(dest)
-                return False
+        # if code != 0:
+        #         print("failed!")
+        #         if os.path.exists(dest):
+        #                 os.remove(dest)
+        #         return False
 
-        split_antimony_partitions(hostname, port, dest, suffix=str(tin_version))
+        split_antimony_partitions(hostname, port, dest, suffix=str(tin_version), transaction_name=transaction_name)
 
-def split_antimony_partitions(hostname, port, rawfile, suffix=None):
+def split_antimony_partitions(hostname, port, dest, suffix=None, transaction_name=None):
         # hostname = os.uname()[1].split(".")
         if not suffix:
                 suffix = datetime.isoformat(datetime.today()).replace(":", "_")
-
+        transaction_name = transaction_name if transaction_name else suffix
         # now we split the exported file into each antimony partition in a separate directory
         machine_id = get_machine_id(hostname, port)
         destsuffix = hostname + "_" + str(port) + "_" + suffix + ".txt"
-        with open(rawfile, 'r') as export_f:
 
-                lastlast4hash = None
-                destination = None
-                destination_file = None
-                for line in export_f:
+        #get file list at dest
+        file_list = os.listdir(dest)
+        
+        for hashkey in file_list:
+                if not os.path.exists(antimony_src_dir + "/" + transaction_name + "/" + antimony_partition_map[hashkey]):
+                        if not os.path.exists(antimony_src_dir + "/" + transaction_name):
+                                os.mkdir(antimony_src_dir + "/" + transaction_name)
+                        os.mkdir(antimony_src_dir + "/" + transaction_name + "/" + antimony_partition_map[hashkey])
+                        subprocess.call(["chmod", "777", dest])
+                        
+                file_name = dest + "/" + hashkey
+                with open(antimony_src_dir + "/" + transaction_name + "/" + antimony_partition_map[hashkey] + "/" + destsuffix, 'a+') as destination:
+                        print("writing " + hostname + ":" + str(port)+ "/" + hashkey + " to " + antimony_src_dir + "/" + transaction_name + "/" + antimony_partition_map[hashkey] + "/" + destsuffix)
+                        shutil.copyfileobj(open(file_name, 'r'), destination)
+                subprocess.call(["gzip", file_name])
+        
+        # sorry ben :(
+        # with open(rawfile, 'r') as export_f:
+        
+        #         lastlast4hash = None
+        #         destination = None
+        #         destination_file = None
 
-                        tokens = line.strip().split()
 
-                        supplier_code = tokens[0]
-                        # the file is exported from postgres ordered by the last4hash, so we don't need to worry about excessively opening and closing files
-                        # at maximum the number of files opened/closed is equal to the number of partitions (e.g 64)
-                        last4hash = tokens[1]
-                        cat_content_id = tokens[2]
 
-                        if last4hash != lastlast4hash:
-                                # num_digits indicates how many of the hash digits serve as the partition key
-                                # e.g: if the last4hash is a2g6, num_digits=2 indicates that we use "a2" as the hash key
-                                # for the conceivable future, num_digits=2 will be all we need, since that gives us a capacity of 256 partitioned databases
-                                # later on, we may need to expand this for > 256 partitions
-                                # scaling the system may be difficult. For example- if we wanted to expand from 64 databases -> 128
-                                # Each existing database would need to be split into two, which would be difficult to accomplish without some downtime
-                                # Definitely possible, but during the operation the "old" databases would need to stay live until completion
-                                hashkey = last4hash[:num_digits]
+                # for line in export_f:
 
-                                newdestination = antimony_partition_map[hashkey]
-                                if newdestination != destination:
-                                        if destination_file:
-                                                destination_file.close()
-                                        print(antimony_src_dir, destination, destsuffix)
-                                        destination_file = open(antimony_src_dir + "/" + newdestination + "/" + destsuffix, 'w')
-                                        destination = newdestination
+                #         tokens = line.strip().split()
 
-                        destination_file.write(" ".join(tokens + [str(machine_id)]) + "\n")
-                        lastlast4hash = last4hash
+                #         supplier_code = tokens[0]
+                #         # the file is exported from postgres ordered by the last4hash, so we don't need to worry about excessively opening and closing files
+                #         # at maximum the number of files opened/closed is equal to the number of partitions (e.g 64)
+                
+                #         last4hash = tokens[1]
+                #         cat_content_id = tokens[2]
 
-        destination_file.close()
+                #         if last4hash != lastlast4hash:
+                #                 # num_digits indicates how many of the hash digits serve as the partition key
+                #                 # e.g: if the last4hash is a2g6, num_digits=2 indicates that we use "a2" as the hash key
+                #                 # for the conceivable future, num_digits=2 will be all we need, since that gives us a capacity of 256 partitioned databases
+                #                 # later on, we may need to expand this for > 256 partitions
+                #                 # scaling the system may be difficult. For example- if we wanted to expand from 64 databases -> 128
+                #                 # Each existing database would need to be split into two, which would be difficult to accomplish without some downtime
+                #                 # Definitely possible, but during the operation the "old" databases would need to stay live until completion
+                #                 hashkey = last4hash[:num_digits]
 
-        # gzipping the raw file indicates it has completed splitting into partitions and is now archived
-        # a similar process is followed for the split files- once they are uploaded to antimony they are gzipped to indicate they have been uploaded
-        # this has the two-fold benefit of creating a marker for progress and reducing the disk footprint of the files
-        subprocess.call(["gzip", rawfile])
+                #                 newdestination = antimony_partition_map[hashkey]
+                #                 if newdestination != destination:
+                #                         if destination_file:
+                #                                 destination_file.close()
+                #                         print(antimony_src_dir, destination, destsuffix)
+                #                         destination_file = open(antimony_src_dir + "/" + newdestination + "/" + destsuffix, 'w')
+                #                         destination = newdestination
+
+                #         destination_file.write(" ".join(tokens + [str(machine_id)]) + "\n")
+                #         lastlast4hash = last4hash
+
+        # destination_file.close()
+
+                # gzipping the raw file indicates it has completed splitting into partitions and is now archived
+                # a similar process is followed for the split files- once they are uploaded to antimony they are gzipped to indicate they have been uploaded
+                # this has the two-fold benefit of creating a marker for progress and reducing the disk footprint of the files
+                # subprocess.call(["gzip", rawfile])
         return True

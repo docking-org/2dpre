@@ -27,7 +27,9 @@ def create_transaction_record_table(transaction_identifier):
 
 def check_transaction_record(transaction_identifier, stagei, parti):
 
-    
+    # if transaction_record_transaction id table exists:
+    if not Database.instance.select("select * from information_schema.tables where table_name = 'transaction_record_{}'".format(transaction_identifier)).empty():
+        return False
     data = Database.instance.select("select * from transaction_record_{} where parti = {} and stagei = {}".format(transaction_identifier, parti, stagei))
 
     if not data.empty():

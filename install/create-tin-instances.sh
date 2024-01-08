@@ -24,6 +24,10 @@ for (( i=$PSQL_INST_START; i<=$PSQL_INST_END; i++ ))
 do
 	dir=$PSQL_PREFIX/psql/12/data$i
 	if [[ ! -d $dir ]]; then
+
+		
+
+
 		mkdir $dir
 		chown -R postgres:postgres $dir
 		su - postgres -c "/usr/pgsql-12/bin/initdb -D ${dir}"
@@ -37,16 +41,60 @@ do
 		
 		systemctl enable postgresql$i-12
 		systemctl start postgresql$i-12
-                systemctl restart postgresql$i-12
+        systemctl restart postgresql$i-12
 	 	
 		
 		PG_HBA_FILE_PATH=$dir/pg_hba.conf
 		CONFIG_FILE=$dir/postgresql.conf
 
 		sudo -u postgres -H -- psql -p $PSQL_PORT -c "create database tin;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "create extension rdkit;"
 		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "create extension intarray;"
-		sudo -u postgres -H -- psql -p $PSQL_PORT tin < $BINDIR/tin.sql
+		sudo -u postgres -H -- psql -p $PSQL_PORT tin < $BINDIR/file.sql
+
+		host=$(hostname | cut -d'.' -f1)	
+		port=$PSQL_PORT
+
+		tranches=$(python $BINDIR/get_tranches.py $host $port $BINDIR)	
+		tranches=$(echo $tranches | sed -e "s/^\[//" -e "s/\]$//" -e "s/'//g" -e "s/,//g")
+		
+		echo "Populating tranches table"
+		for tranche in $tranches
+			do 
+				sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "insert into tranches (tranche_name) values ('$tranche');"
+			done
+
+		# patch_order=('05_27_2022' 'june3_2022' 'june10_2022' 'catid_partitioned' 'zincid_partitioned' 'partition' 'export')
+		# order=('code' 'apply')
+		
+
+		# for patch in "${patch_order[@]}"
+		# do	
+		# 	files=($BINDIR/../psql/tin/patches/$patch/*)
+			
+		# 	for o in "${order[@]}"
+		# 	do
+		# 		echo "o: $o"
+		# 		# if o.psql exists in files
+		# 		file=$BINDIR/../psql/tin/patches/$patch/$o.pgsql
+		# 		if [[ " ${files[@]} " =~ " ${file} " ]]; then
+		# 			echo "Applying $file"
+		# 			sudo -u postgres -H -- psql -p $PSQL_PORT tin -v n_partitions=128 < $file 
+		# 		fi
+		# 	done
+		# done
+
+		# for o in "${order[@]}"
+		# do
+		# 	echo "o: $o"
+		# 	# if o.psql exists in files
+		# 	file=$BINDIR/../psql/common/patches/upload/$o.pgsql
+		# 	if [ -f "${file}" ]; then
+		# 		echo "Applying $file"
+		# 		sudo -u postgres -H -- psql -p $PSQL_PORT tin < $file 
+		# 	fi
+		# done
+	
+
 		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "GRANT CONNECT ON DATABASE tin TO zincread;"
 		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "GRANT CONNECT ON DATABASE tin TO zincwrite;"
 		sudo -u postgres -H -- psql -p $PSQL_PORT tin -c "GRANT CONNECT ON DATABASE tin TO zincfree;"

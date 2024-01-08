@@ -9,8 +9,8 @@ from load_app.common.database import Database
 
 num_digits = 2
 antimony_scratch_dir = "/local2/load"
-antimony_src_dir = "/nfs/exh/zinc22/antimony/src"
-antimony_stage_dir = "/nfs/exh/zinc22/antimony/stage"
+antimony_src_dir = "/nfs/mammoth/zinc22/antimony/src"
+antimony_stage_dir = "/nfs/mammoth/zinc22/antimony/stage"
 
 common_db = Database('n-1-17', 5534, 'zincuser', 'zinc22_common')
 antimony_machine_partition_map = {}

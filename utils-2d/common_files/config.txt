@@ -1,0 +1,2 @@
+diff_destination_tin = /nfs/exb/zinc22/upload_diffs
+config_db_url = zincuser@n-1-17:5534:zinc22_common

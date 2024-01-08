@@ -8,7 +8,6 @@ alter table if exists catalog_substance rename to catalog_substance_t;
 alter table if exists catalog_substance_cat rename to catalog_substance_cat_t;
 
 /*begin;
-
 	select logg('starting sub dup correction');
         select find_duplicate_rows_substance();
 commit;*/

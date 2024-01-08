@@ -3,6 +3,7 @@ import sys, os
 import subprocess
 import tarfile
 import shutil
+import datetime
 
 from load_app.tin.operations.upload import emulate_upload as tin_upload
 from load_app.tin.operations.upload_zincid import upload_zincid as tin_upload_zincid
@@ -10,8 +11,11 @@ from load_app.tin.operations.export_antimony import export_all_from_tin as tin_a
 from load_app.tin.operations.export_vendors import export_vendors as tin_export_vendors
 from load_app.tin.operations.export_substances import export_substances as tin_export_substances
 from load_app.tin.operations.blast_dups import blast_dups_substance as tin_blast_dups_substance
-from load_app.tin.operations.groupnorm import groupnorm as tin_groupnorm
+from load_app.tin.operations.groupnorm import groupnorm_new as tin_groupnorm
 from load_app.tin.operations.diff3d import diff3d as tin_diff3d
+from load_app.tin.operations.update_depleted import undeplete_codes as tin_update_depleted
+from load_app.tin.operations.delete_supplier_codes import delete_supplier_codes as tin_delete_supplier_codes
+
 
 from load_app.antimony.operations.upload import emulate_upload as antimony_upload
 
@@ -46,24 +50,25 @@ def checkpatch(patchcls):
 
 def checktinpatches(args):
     # hard-code this here because im lazy
-    patchlist = [PatchPatch, UploadPatch, TinPartitionPatch, ZincIdPartitionPatch, CatIdPartitionPatch, ExportPatch, WackyMolsPatch, June32022Patch]
+    patchlist = [PatchPatch, UploadPatch]
+    #, TinPartitionPatch, ZincIdPartitionPatch, CatIdPartitionPatch, ExportPatch, WackyMolsPatch, June32022Patch
     allpatched=True
-    for patchcls in reversed(patchlist): # go in reverse so we can abort early if we find everything is in order
-        patch = patchcls()
-        if patch.is_patched():
-            break
-        allpatched=False
-        logging.warning('patch not applied: {}'.format(patchcls.__name__))
+    # for patchcls in reversed(patchlist): # go in reverse so we can abort early if we find everything is in order
+    #     patch = patchcls()
+    #     if patch.is_patched():
+    #         break
+    #     allpatched=False
+    #     logging.warning('patch not applied: {}'.format(patchcls.__name__))
 
-    if args.op_type == 'patch' and allpatched:
-            raise Exception('database is all patched! wont submit patch job')
+    # if args.op_type == 'patch' and allpatched:
+    #         raise Exception('database is all patched! wont submit patch job')
 
-    for patchcls in patchlist: # perform patches in correct order
-        if not args.validate:
-            logging.info('patching: {}'.format(patchcls.__name__))
-            patch = patchcls()
-            patch.apply()
-            logging.info('done patching: {}'.format(patchcls.__name__))
+    # for patchcls in patchlist: # perform patches in correct order
+    #     if not args.validate:
+    #         logging.info('patching: {}'.format(patchcls.__name__))
+    #         patch = patchcls()
+    #         patch.apply()
+    #         logging.info('done patching: {}'.format(patchcls.__name__))
 
 def checktinuptodate(args):
     nohistory = getattr(args, 'nohistory', False)
@@ -83,9 +88,27 @@ def checktinuptodate(args):
             assert (not upload_complete(transaction_id)), 'transaction {} complete, won\'t {}'.format(transaction_id, args.op_type)
 
 def checksbpatches(args):
-    checkpatch(PatchPatch)
-    checkpatch(UploadPatch)
-    checkpatch(AntimonyPartitionPatch)
+    patchlist = [PatchPatch, UploadPatch, AntimonyPartitionPatch]
+    allpatched=True
+    for patchcls in reversed(patchlist): # go in reverse so we can abort early if we find everything is in order
+        patch = patchcls()
+        if patch.is_patched():
+            break
+        allpatched=False
+        logging.warning('patch not applied: {}'.format(patchcls.__name__))
+
+    if args.op_type == 'patch' and allpatched:
+            raise Exception('database is all patched! wont submit patch job')
+
+    for patchcls in patchlist: # perform patches in correct order
+        if not args.validate:
+            logging.info('patching: {}'.format(patchcls.__name__))
+            patch = patchcls()
+            patch.apply()
+            logging.info('done patching: {}'.format(patchcls.__name__))
+    #checkpatch(PatchPatch)
+    #checkpatch(UploadPatch)
+    #checkpatch(AntimonyPartitionPatch)
 def checksbuptodate(args):
     pass
 
@@ -95,7 +118,7 @@ def tin_export(args):
     elif args.export_type == "vendors":
         tin_export_vendors(args.export_dest)
     elif args.export_type == "antimony":
-        tin_antimony_export()
+        tin_antimony_export(args.export_id)
 
 def init_logging(args):
     if getattr(args, 'verbose', False):
@@ -152,9 +175,11 @@ def create_2dload_parser(just_validate=False):
     tin_upload_parser.add_argument("--source-dirs", required=True, help="directory(s) where tranche split & preprocessed files are stored- separated by commas")
     tin_upload_parser.add_argument("--catalogs", required=True, type=catalog_type, dest='transaction_id', help="name(s) of catalogs being uploaded, each corresponding to a source directory at the same position within the argument list- separated by commas")
     tin_upload_parser.add_argument("--diff-destination", required=True, help="where to export the database diff from this upload to")
+    tin_upload_parser.add_argument("--super-id", type=int, required=False, default=0, help="optional super catalog id for depletion of related catalogs")
     tin_upload_parser.add_argument("--fake-upload", action='store_true', default=False, help="pretend to uplaod- just increment version")
     tin_upload_parser.set_defaults(func=wrpfnc(tin_common_init, tin_upload), op_type='upload', transaction_type='write', just_update_info=False)
 
+    
 
     tin_update_substance_info_parser = tin_ops_subparser.add_parser("update_substance_info", help="update ancillary info on database using pre-processed vendor data")
     tin_update_substance_info_parser.add_argument("--source-dirs", nargs="+", required=True, help="directory(s) where tranche split & preprocessed files are stored")
@@ -162,6 +187,18 @@ def create_2dload_parser(just_validate=False):
     tin_update_substance_info_parser.add_argument("--diff-destination", required=True, help="where to export the database diff from this upload to")
     tin_update_substance_info_parser.add_argument("--fake-upload", action='store_true', default=False, help="pretend to uplaod- just increment version")
     tin_update_substance_info_parser.set_defaults(func=wrpfnc(tin_common_init, tin_upload), op_type='upload', transaction_type='write', just_update_info=True)
+
+    tin_update_depleted_parser = tin_ops_subparser.add_parser("update_depleted", help="deplete or un-deplete specified supplier codes")
+    tin_update_depleted_parser.add_argument("--source-dirs", nargs="+", required=True, help="directory(s) where tranche split & preprocessed files are stored")
+    tin_update_depleted_parser.add_argument("--catalogs", nargs="+", required=True, type=catalog_type, dest='transaction_id', help="name(s) of catalogs being uploaded, each corresponding to a source directory at the same position within the argument list")
+    tin_update_depleted_parser.add_argument("--diff-destination", required=True, help="where to export the database diff from this upload to")
+    tin_update_depleted_parser.add_argument("--fake-upload", action='store_true', default=False, help="pretend to uplaod- just increment version")
+    tin_update_depleted_parser.set_defaults(func=wrpfnc(tin_common_init, tin_update_depleted), op_type='update_depleted', transaction_type='write')
+	
+    
+    tin_delete_supplier_codes_parser = tin_ops_subparser.add_parser("delete_supplier_code", help="delete all catalog substances, catalog items, catalogs from tin databases")
+    tin_delete_supplier_codes_parser.add_argument("--diff-destination", required=True, help="where to export the database diff from this upload to. a copy of all cat substances/items deleted") 
+    tin_delete_supplier_codes_parser.set_defaults(func=wrpfnc(tin_common_init, tin_delete_supplier_codes), op_type='delete_supplier_code', transaction_type='write', just_update_info=True)
 
     tin_upload_zincid_parser = tin_ops_subparser.add_parser("upload_zincid", help="upload existing zinc id annotated molecules to database, replacing existing ones or adding aliases where appropriate")
     tin_upload_zincid_parser.add_argument("--source-dirs", required=True, nargs="+", help="directory(s) where zinc id & tranche split annotated files are stored")
@@ -175,6 +212,7 @@ def create_2dload_parser(just_validate=False):
     tin_export_parser.add_argument("export_type", choices=["substance", "vendors", "antimony"], help="choose to export substance+zincids (substance), substance+codes+zincids (vendors), or codes+codeids (antimony))")
     tin_export_parser.add_argument("export_dest", default=None, help="where exported files should be sent (hardcoded for antimony)")
     tin_export_parser.add_argument("--min-transaction", dest='transaction_id')
+    tin_export_parser.add_argument("export_id", default=datetime.datetime.date(datetime.datetime.now()).isoformat(), nargs='?', help="unique identifier for this export")
     tin_export_parser.set_defaults(func=wrpfnc(tin_common_init, tin_export), user="tinuser", op_type='export')
 
     tin_blast_dups_parser = tin_ops_subparser.add_parser("blast", help="blast accidental duplicates out of database tables. shouldn't need to be used very often...")
@@ -210,7 +248,10 @@ def create_2dload_parser(just_validate=False):
     sb_upload_parser.set_defaults(func=wrpfnc(ant_common_init, antimony_upload), op_type='upload')
 
     sb_check_parser = sb_ops_subparser.add_parser("check")
-    sb_check_parser.set_defaults(func=wrpfnc(ant_common_init,), op_type='check')
+    sb_check_parser.set_defaults(func=wrpfnc(ant_common_init,))
+
+    sb_patch_parser = sb_ops_subparser.add_parser("patch")
+    sb_patch_parser.set_defaults(func=wrpfnc(ant_common_init,), op_type='patch')
 
     return parser_main
 

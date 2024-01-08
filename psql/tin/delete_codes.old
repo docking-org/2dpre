@@ -1,0 +1,33 @@
+LOAD 'auto_explain';
+SET auto_explain.log_nested_statements = ON;
+SET auto_explain.log_min_duration = 10;
+SET client_min_messages to log;
+set enable_partitionwise_aggregate=on;
+
+begin;
+	create or replace procedure delete_codes() as
+		$$
+		declare
+			i int;
+			n_partitions int;		
+		begin
+			select ivalue from meta where svalue = 'n_partitions' limit 1 into n_partitions;
+			
+			for i in 0..(n_partitions-1) loop
+				raise info '||| % ||| % |||', i, clock_timestamp();
+				
+				execute format('create temporary table source_t_p%s (sub_id_fk bigint, cat_content_fk bigint, cat_id_fk int, supplier_code varchar, tranche_id smallint)', i);
+				copy source_t_p%s from 'sourcef/%s' delimiter '	';
+
+				execute format('delete from catalog_content where cat_content_id in (select cat_content_fk from source_t_p%s)', i);
+				execute format('delete from catalog_substance_p%s where sub_id_fk in (select sub_id_fk from source_t_p%s)', i, i);
+				execute format('insert into to_delete_from_catalog select cat_id_fk from source_t_p%s', i);
+				
+				drop table source_t_p%s;
+			end loop;
+		end;
+	$$ language plpgsql;
+
+	call delete_codes();
+rollback;
+

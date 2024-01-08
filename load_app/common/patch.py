@@ -93,9 +93,11 @@ class StagedPatch(Patch):
 				stage_pg = os.path.join(self.codepath, stage_name + '.pgsql')
 				try:
 					ecode = Database.instance.call_file(stage_pg, vars=var_args, exc=True)
+					ecode = 0
 				except:
 					sys.stderr.write(f"failed {self.name} patch @ stage={stage_name}\n")
-					raise
+					continue
+
 				self.set_patched(True, suffix=stage_name)
 
 class UploadPatch(StagedPatch):

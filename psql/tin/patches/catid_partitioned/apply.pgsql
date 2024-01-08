@@ -8,7 +8,7 @@ begin;
 
         call create_table_partitions('catalog_id', '');
 
-        call export_ids_from_catalog_content();
+        -- call export_ids_from_catalog_content();
 
         alter table catalog_id add primary key (cat_content_id);
 
