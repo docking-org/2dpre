@@ -14,8 +14,8 @@ from load_app.tin.operations.blast_dups import blast_dups_substance as tin_blast
 from load_app.tin.operations.groupnorm import groupnorm_new as tin_groupnorm
 from load_app.tin.operations.diff3d import diff3d as tin_diff3d
 from load_app.tin.operations.update_depleted import undeplete_codes as tin_update_depleted
-from load_app.tin.operations.delete_supplier_codes import delete_supplier_codes as tin_delete_supplier_codes
-
+from load_app.tin.operations.delete_catalogs import delete_catalogs as tin_delete_catalogs
+from load_app.tin.operations.catch_up import database_catch_up as tin_database_catch_up
 
 from load_app.antimony.operations.upload import emulate_upload as antimony_upload
 
@@ -80,7 +80,8 @@ def checktinuptodate(args):
         return
     show_missing = getattr(args, 'show_missing', False)
     op_type = getattr(args, 'op_type', 'NOP')
-    if   args.transaction_type == "read":
+    
+    if args.transaction_type == "read":
             tin_validate_history(transaction_id, show_missing=show_missing)
             assert upload_complete(transaction_id) ,'transaction {} not complete, won\'t {}'.format(transaction_id, args.op_type)
     elif args.transaction_type == "write":
@@ -179,8 +180,6 @@ def create_2dload_parser(just_validate=False):
     tin_upload_parser.add_argument("--fake-upload", action='store_true', default=False, help="pretend to uplaod- just increment version")
     tin_upload_parser.set_defaults(func=wrpfnc(tin_common_init, tin_upload), op_type='upload', transaction_type='write', just_update_info=False)
 
-    
-
     tin_update_substance_info_parser = tin_ops_subparser.add_parser("update_substance_info", help="update ancillary info on database using pre-processed vendor data")
     tin_update_substance_info_parser.add_argument("--source-dirs", nargs="+", required=True, help="directory(s) where tranche split & preprocessed files are stored")
     tin_update_substance_info_parser.add_argument("--catalogs", nargs="+", required=True, type=catalog_type, dest='transaction_id', help="name(s) of catalogs being uploaded, each corresponding to a source directory at the same position within the argument list")
@@ -196,9 +195,16 @@ def create_2dload_parser(just_validate=False):
     tin_update_depleted_parser.set_defaults(func=wrpfnc(tin_common_init, tin_update_depleted), op_type='update_depleted', transaction_type='write')
 	
     
-    tin_delete_supplier_codes_parser = tin_ops_subparser.add_parser("delete_supplier_code", help="delete all catalog substances, catalog items, catalogs from tin databases")
-    tin_delete_supplier_codes_parser.add_argument("--diff-destination", required=True, help="where to export the database diff from this upload to. a copy of all cat substances/items deleted") 
-    tin_delete_supplier_codes_parser.set_defaults(func=wrpfnc(tin_common_init, tin_delete_supplier_codes), op_type='delete_supplier_code', transaction_type='write', just_update_info=True)
+    tin_delete_catalogs_parser = tin_ops_subparser.add_parser("delete_catalogs", help="delete all catalog substances, catalog items, catalogs from tin databases")
+    tin_delete_catalogs_parser.add_argument("--transaction_id", required=True, help="which catalogs to delete") 
+    # tin_delete_catalogs_parser.add_argument("--ignore_history", action='store_true', default=False, help="ignore history check")
+    tin_delete_catalogs_parser.set_defaults(func=wrpfnc(tin_common_init, tin_delete_catalogs), op_type='delete_supplier_code', transaction_type='write', just_update_info=True)
+    tin_database_catch_up_parser = tin_ops_subparser.add_parser("catch_up", help="catch up database to latest transaction")
+    tin_database_catch_up_parser.add_argument("--source-dirs", required=False, help="directory(s) where tranche split & preprocessed files are stored- separated by commas")
+    tin_database_catch_up_parser.add_argument("--diff-destination", required=False, help="where to export the database diff from this upload to")
+    tin_database_catch_up_parser.add_argument("--fake-upload", action='store_true', default=False, help="pretend to uplaod- just increment version")
+    tin_database_catch_up_parser.add_argument("--super-id", type=int, required=False, default=0, help="optional super catalog id for depletion of related catalogs")
+    tin_database_catch_up_parser.set_defaults(func=wrpfnc(tin_common_init, tin_database_catch_up), op_type='catch_up', transaction_type='write', just_update_info=False)
 
     tin_upload_zincid_parser = tin_ops_subparser.add_parser("upload_zincid", help="upload existing zinc id annotated molecules to database, replacing existing ones or adding aliases where appropriate")
     tin_upload_zincid_parser.add_argument("--source-dirs", required=True, nargs="+", help="directory(s) where zinc id & tranche split annotated files are stored")

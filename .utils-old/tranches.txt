@@ -1,4 +1,0 @@
-/mnt/nfs/exa/work/jyoung/phase2_tranche/phase2_s/real2021-s_tranches s
-/mnt/nfs/exa/work/jyoung/phase2_tranche/phase2_m m
-/mnt/nfs/db5/zinc22/2d/vendors/enamine/2020-10/2020q1-3_REAL_Space_Acids_345M_tranches/S_345M_smiles su
-/mnt/nfs/db5/zinc22/2d/vendors/enamine/2020-10/2020q1-3_REAL_Space_Acids_345M_tranches/M_345M_smiles mu

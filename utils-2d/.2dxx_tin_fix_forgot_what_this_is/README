@@ -1,7 +1,0 @@
-This folder has scripts relating to a problem that was discovered November 2021, which really traces its roots back to the tin disaster of Dec 2020.
-
-Basically, when tin went tits-up in 2020 it was because we discovered that certain databases had been wiped out and re-loaded at some point in a different order. 
-
-This meant that the ZINC IDs we had on file (and were sharing with everyone in the lab through the db2 pipeline) now did not match up with what was on the database.
-
-Our method of book-keeping at the time was somewhat underdeveloped.

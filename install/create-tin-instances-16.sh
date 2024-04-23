@@ -22,7 +22,7 @@ DEFAULT_PSQL_PORT=5433
 
 for (( i=$PSQL_INST_START; i<=$PSQL_INST_END; i++ ))
 do
-	dir=$PSQL_PREFIX/psql/12/data$i
+	dir=$PSQL_PREFIX/psql/16/data$i
 	if [[ ! -d $dir ]]; then
 
 		
@@ -30,18 +30,18 @@ do
 
 		mkdir $dir
 		chown -R postgres:postgres $dir
-		su - postgres -c "/usr/pgsql-12/bin/initdb -D ${dir}"
-		new_service="/usr/lib/systemd/system/postgresql${i}-12.service"
+		su - postgres -c "/usr/pgsql-16/bin/initdb -D ${dir}"
+		new_service="/usr/lib/systemd/system/postgresql${i}-16.service"
 		rm -f $new_service
-		cp /usr/lib/systemd/system/postgresql-12.service $new_service
+		cp /usr/lib/systemd/system/postgresql-16.service $new_service
 		replacement_escaped=$( echo "${dir}" | sed -e 's/[\/&]/\\&/g' )		
 		sed -i "31s/.*/Environment=PGDATA=$replacement_escaped/" $new_service
 		PSQL_PORT=$(($DEFAULT_PSQL_PORT+$i))
 		sed -i "32i Environment=PGPORT=$PSQL_PORT" $new_service
 		
-		systemctl enable postgresql$i-12
-		systemctl start postgresql$i-12
-        systemctl restart postgresql$i-12
+		systemctl enable postgresql$i-16
+		systemctl start postgresql$i-16
+        systemctl restart postgresql$i-16
 	 	
 		
 		PG_HBA_FILE_PATH=$dir/pg_hba.conf
@@ -116,10 +116,10 @@ do
 		sudo sed -i "s/^#listen_addresses = 'localhost'/listen_addresses = '*'/" $CONFIG_FILE
 		sudo sed -i "s/^#port = 5432/port = ${PSQL_PORT}/" $CONFIG_FILE
 
-		systemctl restart postgresql$i-12		
+		systemctl restart postgresql$i-16
 		
 		echo "######################################## Instance ${i} has been created! ##########################################"
-		echo "systemctl status postgresql${i}-12"
+		echo "systemctl status postgresql${i}-16"
 		echo ""
 	else
     		echo "Skipped creating Instance ${i}. Directory exists! : ${dir}" 1>&2

@@ -11,6 +11,7 @@ from load_app.common.upload import make_hash_partitions, get_partitions_count, c
 def create_source_file(database_port, source_dirs, transaction_id, args):
 
     source_f = (os.environ.get("TEMPDIR") or "/local2/load") + "/" + str(database_port) + "_" + transaction_id + "_upload.txt"
+    
     if os.path.exists(source_f):
         if args.debug:
             return source_f
@@ -38,8 +39,22 @@ def create_source_file(database_port, source_dirs, transaction_id, args):
         raise Exception("unable to create source file!")
 
     if not os.path.exists(source_f):
-        raise Exception("source file not created for some reason?!")
+        print("the source file does not exist. verifying that there really isn't anything to upload...")
+        for source_dir in source_dirs:
+            for tranche in get_tranches():
+                src_file = find_source_file(source_dir, tranche)
+                if src_file:
+                    print("found", src_file)
+                    print("this file should have been uploaded, but wasn't")
+                    raise Exception("source file not created for some reason?!")
+        
+        print("ok, there really isn't anything to upload. adding an entry to the upload history to mark this transaction as complete")
+        
+        create_transaction_record_table(transaction_id)
+        increment_version(transaction_id)
+
     #psql_source_f.close()
+    
     psql_source_f_t = open(source_f + '.t', 'w')
     # this sed expression converts all backslash groups into double backslashes
     # even if there are 57 backslashes in a row, this will convert them to just 2
@@ -101,7 +116,9 @@ def upload_zincid(args):
     os.system("chmod 777 {}".format(diffdir))
 
     code_upload = Database.instance.call_file(BINDIR + "/psql/tin/zincid_upload.pgsql", vars=psqlvars)
-
+    print("upload complete")
+    print("upload code:", code_upload)
+    print("code sync")
     code_sync   = Database.instance.call_file(BINDIR + "/psql/tin/sync_id_tables.pgsql")
 
     if code_upload == 0 and code_sync == 0:

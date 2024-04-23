@@ -14,13 +14,12 @@ def find_source_file(source_dir, tranche, ext='.smi'):
     p3 = os.path.join(source_dir, tranche + ext)
     p4 = os.path.join(source_dir, tranche)
     for p in [p1, p2, p3, p4] + [_p+'.gz' for _p in [p1, p2, p3, p4]]:
+        print(p)
         if os.path.isfile(p):
             return p
     return None
 
-
 def create_source_file(source_dirs, cat_shortnames):
-
     database_port = Database.instance.port
     source_f = (os.environ.get("TEMPDIR") or "/local2/load") + "/" + str(database_port) + "_upload.txt"
 
@@ -117,6 +116,7 @@ def upload_partitioned(stage, partition_index, transaction_identifier, diff_dest
 def emulate_upload(args):
 
     source_dirs = args.source_dirs.split(',')
+
     cat_shortnames = args.transaction_id.split('.')
     diff_destination = args.diff_destination
     super_id = args.super_id

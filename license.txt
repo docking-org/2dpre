@@ -1,6 +1,6 @@
 BSD 3-Clause License
 
-Copyright (c) 2022, Irwin Labs, Ben Tingle, Jose Castanon, Khanh Tang, John J Irwin, The UC Regents, and others
+Copyright (c) 2022, Irwin Labs, Ben Tingle, Mar Castanon, Khanh Tang, John J Irwin, The UC Regents, and others
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

@@ -1,5 +1,0 @@
-2d,s,m,su,mu
-wuxi,mcule
-sx,mx
-sy,my
-sc,mc1,ma

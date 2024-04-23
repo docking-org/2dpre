@@ -70,8 +70,14 @@ def base62(n):
     return ''.join(reversed(b62_str))
 
 def get_tranches():
-    data = Database.instance.select("select tranche_name from tranches").all()
+    host = Database.instance.host
+    port = Database.instance.port
+    data = Database.get_config_instance().select("select tranche from tranche_mappings where host = '{}' and port = {}".format(host, port)).all()
+    
     return [d[0] for d in data]
+    # data = Database.instance.select("select tranche_name from tranches").all()
+    # return [d[0] for d in data]
+
 
 def zincid_to_subid_opt(infile, outfile, tranche_id, only_output_zincid=False, writemode='w'):
     if infile.endswith('.gz'):

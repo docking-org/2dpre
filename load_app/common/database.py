@@ -43,23 +43,36 @@ class Database:
         pass
 
     def __init__(self, host, port, user, db):
+        
         self.host = host
+        
         self.port = port
         self.user = user
         self.db = db
 
     def __open_psql_sp(self, vars, addtl_args, sp_kwargs):
-        psql = ["psql", "-h", str(self.host), "-p", str(self.port), "-d", self.db, "-U", self.user, "--csv"]
+    
+        while True:
+            try:
+                ip = subprocess.check_output(["getent", "ahosts", self.host]).decode('utf-8').split()[0]
+                break
+            except:
+                pass
+
+        psql = ["psql", "-h", str(ip), "-p", str(self.port), "-d", self.db, "-U", self.user, "--csv"]
         for vname, vval in zip(vars.keys(), vars.values()):
             psql += ["--set={}={}".format(vname, vval)]
         psql += addtl_args
         return subprocess.Popen(psql, stdout=subprocess.PIPE, **sp_kwargs)
 
     def call(self, query, vars={}, echo=True, exc=False, sp_kwargs={}):
+        
         p = self.__open_psql_sp(vars, ["-c", query], sp_kwargs)
-
+    
         res = SelectResult()
         res._code_no_load_from_sp(p, echo=echo)
+    
+
         if not exc:
             return res.code
         elif res.code == 0:
@@ -116,7 +129,10 @@ class Database:
 
     def set_instance(host, port, user, db, instancename='instance'):
         db_instance = Database(None, None, None, None)
+        
+        
         db_instance.host = host
+
         db_instance.port = port
         db_instance.user = user
         db_instance.db = db

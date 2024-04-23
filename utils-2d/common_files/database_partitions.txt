@@ -1,1 +1,0 @@
-/mnt/nfs/home/xyz/btingle/bin/2dload.testing/utils-2d/zinc22_stats/statistics/tranche_mappings/database_partitions_11_28_2023.txt

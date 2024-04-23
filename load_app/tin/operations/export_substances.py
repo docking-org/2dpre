@@ -22,9 +22,15 @@ def export_substances(destination):
     subprocess.call(["mkdir", "-p", export_raw_split_dest])
     subprocess.call(["chmod", "777", export_tmp_dest])
 
-    psqlvars = {"output_file" : export_raw_dest}
-    Database.instance.call_file(BINDIR + '/psql/tin/export_substance.pgsql', vars=psqlvars)
+    # if not os.path.exists(export_raw_dest):
+    #     os.system("touch " + export_raw_dest)
+    #     print("empty export file created")
+    #     print(export_raw_dest)
 
+    psqlvars = {"output_file" : export_raw_dest}
+    
+    Database.instance.call_file(BINDIR + '/psql/tin/export_substance.pgsql', vars=psqlvars)
+    
     subprocess.call(["awk", "-v", "t={}".format(export_raw_split_dest), '{print $1 "\t" $2>t"/"$3}', export_raw_dest])
 
     for tranche in os.listdir(export_raw_split_dest):

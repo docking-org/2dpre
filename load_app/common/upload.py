@@ -14,6 +14,7 @@ def make_hash_partitions(table_name, N):
 
 def get_partitions_count():
     n_partitions = Database.instance.select("select ivalue from meta where svalue = 'n_partitions' limit 1").first()[0]
+    
     return int(n_partitions)
 
 def create_transaction_record_table(transaction_identifier):
@@ -42,8 +43,10 @@ def check_transaction_started(transaction_identifier):
 #############
 
 def upload_complete(transaction_id):
+    
     if not transaction_id: return True # maybe an odd behavior, but it helps
     data = Database.instance.select("select svalue from meta where svalue = '{}' and varname = 'upload_name'".format(transaction_id))
+    
     if not data.empty():
         return True
     else:

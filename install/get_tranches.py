@@ -36,10 +36,17 @@ def get_tranches(host,port,BINDIR):
     mp_end = mp_range.index(end[3:])
     
     if hac_start < hac_end:
-        for i in range(mp_start, len(mp_range)):
-            tranches.append(hac_start + mp_range[i])
-        for i in range(0, mp_end+1):
-            tranches.append(hac_end + mp_range[i])
+    # Add all tranches from start to end, looping through the mp_range, including numbers between hac_start and hac_end
+    for i in range(mp_start, len(mp_range)):
+        tranches.append(hac_start + mp_range[i])
+
+    for i in range(int(hac_start.strip("H"))+1, int(hac_end.strip("H"))):
+        for j in mp_range:
+            fixed = str(i)
+            if(int(i) < 10):
+                fixed = "0" + str(i)
+            tranches.append("H" + fixed + j)
+        
     else:
         for i in range(mp_start, mp_end+1):
             tranches.append(hac_start + mp_range[i])
