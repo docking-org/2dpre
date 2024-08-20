@@ -28,8 +28,16 @@ export CATALOG
 
 mkdir -p $EXPORT_DEST
 EXPORT_DEST=$EXPORT_DEST
-p_start=$(grep -w $PARTITION_ID $BINPATH/partitions.txt | awk '{print $1}')
-p_end=$(grep -w $PARTITION_ID $BINPATH/partitions.txt | awk '{print $2}')
+
+partition_range=$(python $BINPATH/get_partition_range.py $PARTITION_ID)
+partition_range=$(echo $partition_range | sed -e "s/^\[//" -e "s/\]$//" -e "s/'//g" -e "s/,//g")
+
+echo $partition_range
+
+p_start=$( echo $partition_range | grep -w $PARTITION_ID | awk '{print $1}' )
+p_end=$( echo $partition_range | grep -w $PARTITION_ID | awk '{print $2}' )
+
+
 tranche_files=$(python $BINPATH/get_partition_tranche_files.py $TRANCHES $p_start $p_end)
 
 for tranche_file in $tranche_files; do

@@ -29,7 +29,7 @@ def check_upload_history(check_valid=None, show_missing=False):
 	missing_optional  = []
 	valid_optional	  = []
 	id_to_optype	  = {}
-
+	
 	uploads_hist = []
 
 	# with open(BINDIR + '/common_files/tin_upload_history.txt') as upload_hist:
@@ -53,16 +53,17 @@ def check_upload_history(check_valid=None, show_missing=False):
 	
 	print(Database.instance.host)
 	print(Database.instance.port)
-	cur.execute('select machine_id from tin_machines where hostname = %s and port = %s', (Database.instance.host, Database.instance.port))
+	cur.execute('select partition_id from database_partitions where host = %s and port = %s', (Database.instance.host, Database.instance.port))
 	machine_id = cur.fetchone()[0]
+	
 	#select from tin_upload_history where machines array contains machine_id
-
+	
 	cur.execute("select * from tin_upload_history where machines @> ARRAY[%s]::int[] order by u_order asc", (machine_id,))
 
 	h = cur.fetchall()
 	
 	for line in h:
-	
+		
 		transaction_id, optype, optional = line[0:3]
 		uploads_hist.append({
 			'transaction_id': transaction_id,
@@ -71,14 +72,12 @@ def check_upload_history(check_valid=None, show_missing=False):
 		})
 		id_to_optype[transaction_id] = optype
 
-	
-	
 	# transactions = [x['transaction_id'] for x in uploads_hist]
 	# if check_valid not in transactions:
 	# 	raise Exception('transaction {} not valid for database'.format(check_valid))
 	cur.close()
 	conn.close()	
-	
+	print(uploads_hist)
 	uploads_hist = list(uploads_hist)
 
 	
@@ -99,8 +98,8 @@ def check_upload_history(check_valid=None, show_missing=False):
 	
 	# print(list(x[0] for x in database_uploads_hist))
 	database_uploads_hist=list(x[0] for x in database_uploads_hist)
-
 	print(database_uploads_hist)
+	
 	print([x['transaction_id'] for x in uploads_hist])
 	#compare uploads_hist to database_uploads_hist, and find the missing mandatory, missing optional, and valid optional
 	#also find the present mandatory and present optional

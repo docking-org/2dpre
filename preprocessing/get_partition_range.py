@@ -8,24 +8,20 @@ mp_range = ["M500", "M400", "M300", "M200", "M100", "M000", "P000", "P010", "P02
 digits_map = { digit : i for i, digit in enumerate(digits) }
 b62_table = [62**i for i in range(12)]
 
+partition_id = sys.argv[1]
 
-def get_tranches(host,port,BINDIR):
-    tranches = []
-    
-    conn = psycopg2.connect(database)
-    cur = conn.cursor()
-    cur.execute("SELECT tranche FROM tranche_mappings where host=%s and port=%s", (host,port))
+connection = psycopg2.connect(database)
+cursor = connection.cursor()
+cursor.execute("SELECT * from tin_partitions where partition_id = %s", (partition_id,))
+rows = cursor.fetchall()
+rows = [row for row in rows]
+string = ""
+for row in rows:
+    string += row[0]
+    string += " "
+    string += row[1]
+    string += " "
+    string += str(row[2])
+    string += "\n"
 
-    rows = cur.fetchall()
-    for row in rows:
-        tranches.append(row[0])
-
-    return tranches
-
-if __name__ == '__main__':
-    #program takes host, port as arguments
-    host = sys.argv[1]
-    port = sys.argv[2]
-    BINDIR = sys.argv[3]
-    tranches = get_tranches(host,port, BINDIR)
-    print(tranches)
+print(string)

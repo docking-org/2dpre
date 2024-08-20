@@ -8,7 +8,7 @@ from load_app.common.consts import *
 from load_app.common.database import Database
 
 def get_tin_machines():
-    for host, port in Database.get_config_instance().select('select hostname, port from tin_machines order by hostname, port').data:
+    for host, port in Database.get_config_instance().select('select host, port from database_partitions order by host, port').data:
         yield host, port
 
 def get_tranche_id(tranchename):

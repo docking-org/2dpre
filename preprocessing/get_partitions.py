@@ -9,23 +9,10 @@ digits_map = { digit : i for i, digit in enumerate(digits) }
 b62_table = [62**i for i in range(12)]
 
 
-def get_tranches(host,port,BINDIR):
-    tranches = []
-    
-    conn = psycopg2.connect(database)
-    cur = conn.cursor()
-    cur.execute("SELECT tranche FROM tranche_mappings where host=%s and port=%s", (host,port))
-
-    rows = cur.fetchall()
-    for row in rows:
-        tranches.append(row[0])
-
-    return tranches
-
 if __name__ == '__main__':
-    #program takes host, port as arguments
-    host = sys.argv[1]
-    port = sys.argv[2]
-    BINDIR = sys.argv[3]
-    tranches = get_tranches(host,port, BINDIR)
-    print(tranches)
+    connection = psycopg2.connect(database)
+    cursor = connection.cursor()
+    cursor.execute("SELECT partition_id from database_partitions;")
+    rows = cursor.fetchall()
+    partitions = [row[0] for row in rows]
+    print(partitions)

@@ -4,9 +4,10 @@
 import psycopg2
 import os 
 import paramiko 
-
 import logging
 
+iam = os.getenv('USER')
+ssh_pass = input("Enter password: ")
 
 class SSH:
     def __init__(self):
@@ -24,7 +25,7 @@ class SSH:
         client.connect(hostname=ssh_machine, username=ssh_username, password=ssh_password, timeout=10)
         return client
         
-    def run_sudo_command(self, ssh_username="s_mar", ssh_password="mypassword", ssh_machine="localhost", command="ls",
+    def run_sudo_command(self, ssh_username="s_mar", ssh_password=ssh_pass, ssh_machine="localhost", command="ls",
                             jobid="None"):
         """Executes a command over a established SSH connectio.
         :param ssh_machine: IP of the machine to which SSH connection to be established.
@@ -68,32 +69,39 @@ cur.execute('select hostname,port from tin_machines')
 sizes = {}
 machines = cur.fetchall()
 machines = [list(x) for x in machines]
+cur.execute('select host,port from antimony_machines')
+antimony_machines = cur.fetchall()
 
 ssh = SSH()
+select_statement = 'select * from substance limit 1;'
+select_stement_antimony = 'select * from supplier_codes limit 1;'
+
 for machine in machines:
     print(machine)
+    #check which machines are down
     try:
-        connection = ssh.run_sudo_command(ssh_machine=machine[0], ssh_username="s_mar", ssh_password="69Fenderhoe!", command='sudo service postgresql'+str(int(machine[1])-5432)+'-12 start')
-    except:
+        db = psycopg2.connect(dbname='tin', user='tinuser', host=machine[0], port=machine[1])
+        cur = db.cursor()
+        cur.execute(select_statement)
+        db.close()
+        print(machine[0]+":"+str(machine[1])+" is up")
+    except Exception as e:
+        print("Machine down")
+        print(e)
+        print("restarting "+machine[0]+":"+str(machine[1]))
+        connection = ssh.run_sudo_command(ssh_machine=machine[0], ssh_username=iam, command='sudo service postgresql'+str(int(machine[1])-5432)+'-12 start')
         continue
-    print(connection)
-
-antimony_machines = {   
-"n-9-38",
-"n-5-13",
-"n-5-15",
-"n-5-14"
-}
 
 for machine in antimony_machines:
     try:
-        #find postgres services that contain 'sb' in their name and start them
-        #8 processes per machine
-        for i in range(1,9):
-            connection = ssh.run_sudo_command(ssh_machine=machine, ssh_username="s_mar", ssh_password="69Fenderhoe!", command='sudo service postgresql'+str(i)+'sb-12 start')
-            print(connection)
-    except:
+        db = psycopg2.connect(dbname='antimony', user='antimonyuser', host=machine[0], port=machine[1])
+        cur = db.cursor()
+        cur.execute(select_stement_antimony)
+        db.close()
+        print(machine[0]+":"+str(machine[1])+" is up")
+    except Exception as e:
+        print("Machine down")
+        print(e)
+        print("restarting "+machine[0]+":"+str(machine[1]))
+        connection = ssh.run_sudo_command(ssh_machine=machine[0], ssh_username=iam, command='sudo service postgresql'+str(int(machine[1])-532)+'sb-12 start')
         continue
-    
-
-

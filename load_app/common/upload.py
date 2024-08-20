@@ -4,9 +4,9 @@ from load_app.common.database import Database
 # should move these functions to an "upload_common" file for organizational purposes
 # for now they are like this
 def make_hash_partitions(table_name, N):
-
     for i in range(N):
         code = Database.instance.call("create table {0}_p{1} partition of {0} for values with (modulus {2}, remainder {1})".format(table_name, i, N))
+        
         if code != 0:
             raise NameError("failed to create hash partitions for {}:{}:{}".format(Database.instance.port, table_name, N))
             return False
@@ -14,7 +14,6 @@ def make_hash_partitions(table_name, N):
 
 def get_partitions_count():
     n_partitions = Database.instance.select("select ivalue from meta where svalue = 'n_partitions' limit 1").first()[0]
-    
     return int(n_partitions)
 
 def create_transaction_record_table(transaction_identifier):

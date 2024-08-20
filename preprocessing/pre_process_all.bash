@@ -15,10 +15,19 @@ function wait_for_preprocess_space {
         done
 }
 
-for pid in $(awk '{print $2}' $BINDIR/database_partitions.txt); do
 
-	bash $BINDIR/pre_process_partition.bash $pid $tranches $catalog
-	wait_for_preprocess_space
-	! [ -z $first ] && echo "found space, submitting more!"
-
+partitions=$(python $BINDIR/get_partitions.py)
+partitions=$(echo $partitions | sed -e "s/^\[//" -e "s/\]$//" -e "s/'//g" -e "s/,//g")
+for pid in $partitions; do
+        bash $BINDIR/pre_process_partition.bash $pid $tranches $catalog
+        wait_for_preprocess_space
+        ! [ -z $first ] && echo "found space, submitting more!"
 done
+
+# for pid in $(awk '{print $2}' $BINDIR/database_partitions.txt); do
+
+# 	bash $BINDIR/pre_process_partition.bash $pid $tranches $catalog
+# 	wait_for_preprocess_space
+# 	! [ -z $first ] && echo "found space, submitting more!"
+
+# done

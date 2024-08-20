@@ -5,7 +5,7 @@ SET client_min_messages to log;
 set enable_partitionwise_aggregate=on;
 
 --delete substance/cat_subs/cats using upload diffs
---using this in case a catalog gets uploaded in the wrong order, or if a catalog is outdated and needs to be delete_codes
+--this script is used in case a catalog(s) get uploaded in the wrong order, or many other reasons. It will delete all new cat_subs, subs, and cats created during that upload only. 
 
 create or replace procedure delete_codes(diff_path text) as
 	$$
@@ -35,10 +35,9 @@ create or replace procedure delete_codes(diff_path text) as
 			drop table if exists delete_cat_subs cascade;
 		end loop;
 
-		--set sub_id sequence to max(sub_id) + 1
-		--execute(format('select setval(''sub_id_seq'', (select max(sub_id) from substance) + 1)')); 
-		--delete from meta where varname = 'upload_name' and svalue = 'chbr';
-
+		execute(format('select setval(''sub_id_seq'', (select max(sub_id) from substance) + 1)')); 
+		delete from meta where varname = 'upload_name' and svalue = diff_path;
+		execute(format('drop table if exists transaction_record_%s', diff_path));
 	end;
 $$ language plpgsql;
 

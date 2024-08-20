@@ -87,6 +87,9 @@ def checktinuptodate(args):
     elif args.transaction_type == "write":
             tin_validate_history(transaction_id, show_missing=show_missing)
             assert (not upload_complete(transaction_id)), 'transaction {} complete, won\'t {}'.format(transaction_id, args.op_type)
+    elif args.transaction_type == "modify":
+            tin_validate_history(transaction_id, show_missing=show_missing)
+            assert (upload_complete(transaction_id)), 'transaction {} exits, modifying'.format(transaction_id, args.op_type)
 
 def checksbpatches(args):
     patchlist = [PatchPatch, UploadPatch, AntimonyPartitionPatch]
@@ -119,7 +122,7 @@ def tin_export(args):
     elif args.export_type == "vendors":
         tin_export_vendors(args.export_dest)
     elif args.export_type == "antimony":
-        tin_antimony_export(args.export_id)
+        tin_antimony_export(args.export_dest)
 
 def init_logging(args):
     if getattr(args, 'verbose', False):
@@ -198,7 +201,8 @@ def create_2dload_parser(just_validate=False):
     tin_delete_catalogs_parser = tin_ops_subparser.add_parser("delete_catalogs", help="delete all catalog substances, catalog items, catalogs from tin databases")
     tin_delete_catalogs_parser.add_argument("--transaction_id", required=True, help="which catalogs to delete") 
     # tin_delete_catalogs_parser.add_argument("--ignore_history", action='store_true', default=False, help="ignore history check")
-    tin_delete_catalogs_parser.set_defaults(func=wrpfnc(tin_common_init, tin_delete_catalogs), op_type='delete_supplier_code', transaction_type='write', just_update_info=True)
+    tin_delete_catalogs_parser.set_defaults(func=wrpfnc(tin_common_init, tin_delete_catalogs), op_type='delete_supplier_code', transaction_type='modify', just_update_info=True)
+
     tin_database_catch_up_parser = tin_ops_subparser.add_parser("catch_up", help="catch up database to latest transaction")
     tin_database_catch_up_parser.add_argument("--source-dirs", required=False, help="directory(s) where tranche split & preprocessed files are stored- separated by commas")
     tin_database_catch_up_parser.add_argument("--diff-destination", required=False, help="where to export the database diff from this upload to")

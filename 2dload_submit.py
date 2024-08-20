@@ -74,6 +74,7 @@ for hostname, hostname_group in groupby(list(all_machines), lambda x:x[0]):
 		
 		logstr = ''
 		logjob = ''
+		print(hostname, port)
 		try:
 			logstr = '{}:{}:::validation ok'.format(hostname, port)
 			is_running, optype, job_id, status, duration, trans_id = is_job_running(args.subsystem, hostname, port)
@@ -87,7 +88,7 @@ for hostname, hostname_group in groupby(list(all_machines), lambda x:x[0]):
 				
 			else:
 				logjob = ':::job is running type={} transaction={} id={} status={} duration={}'.format(optype, trans_id, job_id, status, duration)
-
+				print(logjob)
 				# args.func(args)
 				valid_m.append((hostname, port))
 			logging.info(logstr + logjob)
